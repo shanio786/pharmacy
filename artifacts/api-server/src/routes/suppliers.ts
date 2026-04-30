@@ -94,7 +94,7 @@ router.get("/suppliers/:id/ledger", requireAuth, async (req, res) => {
   res.json({ supplier, entries, balance: Number(supplier.balance) });
 });
 
-router.post("/suppliers/:id/pay", requireAuth, requirePharmacist, async (req, res) => {
+router.post("/suppliers/:id/payment", requireAuth, requirePharmacist, async (req, res) => {
   const id = Number(req.params["id"]);
   const { amount, date, notes } = req.body as {
     amount: number;
@@ -129,5 +129,6 @@ router.post("/suppliers/:id/pay", requireAuth, requirePharmacist, async (req, re
 
   res.json({ success: true, balance: newBalance });
 });
+
 
 export default router;

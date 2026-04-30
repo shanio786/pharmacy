@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useListDeliveries, useCreateDelivery, useUpdateDelivery, useListCustomers, useListSales } from "@workspace/api-client-react";
-import type { CreateDeliveryBody, UpdateDeliveryBody } from "@workspace/api-client-react";
+import type { CreateDeliveryBody, UpdateDeliveryBody, Delivery, Customer, Sale } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -61,8 +61,8 @@ export default function DeliveriesPage() {
       setShowCreate(false);
       setForm({ saleId: null, customerId: null, deliveryAddress: "", scheduledDate: null, notes: null });
       qc.invalidateQueries();
-    } catch (err: any) {
-      toast({ title: "Error", description: err?.message, variant: "destructive" });
+    } catch (err: unknown) {
+      toast({ title: "Error", description: err instanceof Error ? err.message : "Request failed", variant: "destructive" });
     }
   };
 
@@ -78,12 +78,12 @@ export default function DeliveriesPage() {
       toast({ title: "Delivery status updated" });
       setShowUpdate(false);
       qc.invalidateQueries();
-    } catch (err: any) {
-      toast({ title: "Error", description: err?.message, variant: "destructive" });
+    } catch (err: unknown) {
+      toast({ title: "Error", description: err instanceof Error ? err.message : "Request failed", variant: "destructive" });
     }
   };
 
-  const openUpdate = (d: any) => {
+  const openUpdate = (d: Delivery) => {
     setSelectedId(d.id);
     setUpdateStatus(d.status);
     setUpdateNote("");
@@ -120,7 +120,7 @@ export default function DeliveriesPage() {
               <tbody>
                 {isLoading ? (
                   <tr><td colSpan={7} className="text-center py-8 text-muted-foreground">Loading...</td></tr>
-                ) : (deliveries as any[]).length === 0 ? (
+                ) : (deliveries as Delivery[]).length === 0 ? (
                   <tr>
                     <td colSpan={7} className="text-center py-12">
                       <Truck className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
@@ -128,7 +128,7 @@ export default function DeliveriesPage() {
                     </td>
                   </tr>
                 ) : (
-                  (deliveries as any[]).map((d) => (
+                  (deliveries as Delivery[]).map((d) => (
                     <tr key={d.id} className="border-b last:border-0 hover:bg-muted/20">
                       <td className="px-4 py-3 font-medium text-muted-foreground">DEL-{String(d.id).padStart(4, "0")}</td>
                       <td className="px-4 py-3">
@@ -177,7 +177,7 @@ export default function DeliveriesPage() {
                 <SelectTrigger><SelectValue placeholder="Select customer..." /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">— None —</SelectItem>
-                  {(customers as any[]).map((c) => (
+                  {(customers as Customer[]).map((c) => (
                     <SelectItem key={c.id} value={String(c.id)}>{c.name} ({c.phone})</SelectItem>
                   ))}
                 </SelectContent>
@@ -192,7 +192,7 @@ export default function DeliveriesPage() {
                 <SelectTrigger><SelectValue placeholder="Select sale..." /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">— None —</SelectItem>
-                  {(sales as any[]).slice(0, 30).map((s) => (
+                  {(sales as Sale[]).slice(0, 30).map((s) => (
                     <SelectItem key={s.id} value={String(s.id)}>{s.invoiceNo} — {s.date}</SelectItem>
                   ))}
                 </SelectContent>

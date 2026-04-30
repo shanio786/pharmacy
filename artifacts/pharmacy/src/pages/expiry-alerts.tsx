@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useGetExpiringMedicines } from "@workspace/api-client-react";
+import type { ExpiringBatch } from "@workspace/api-client-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -16,12 +17,13 @@ export default function ExpiryAlertsPage() {
   const [days, setDays] = useState("90");
   const { data: items = [], isLoading } = useGetExpiringMedicines({ days: Number(days) });
 
-  const expired = (items as any[]).filter((i) => getDaysLeft(i.expiryDate) < 0);
-  const critical = (items as any[]).filter((i) => getDaysLeft(i.expiryDate) >= 0 && getDaysLeft(i.expiryDate) <= 30);
-  const warning = (items as any[]).filter((i) => getDaysLeft(i.expiryDate) > 30 && getDaysLeft(i.expiryDate) <= 90);
-  const safe = (items as any[]).filter((i) => getDaysLeft(i.expiryDate) > 90);
+  const expired = (items as ExpiringBatch[]).filter((i) => getDaysLeft(i.expiryDate) < 0);
+  const critical = (items as ExpiringBatch[]).filter((i) => getDaysLeft(i.expiryDate) >= 0 && getDaysLeft(i.expiryDate) <= 30);
+  const warning = (items as ExpiringBatch[]).filter((i) => getDaysLeft(i.expiryDate) > 30 && getDaysLeft(i.expiryDate) <= 90);
+  const safe = (items as ExpiringBatch[]).filter((i) => getDaysLeft(i.expiryDate) > 90);
 
-  const getColor = (daysLeft: number) => {
+  type BadgeVariant = "default" | "destructive" | "outline" | "secondary";
+  const getColor = (daysLeft: number): BadgeVariant => {
     if (daysLeft < 0) return "destructive";
     if (daysLeft <= 30) return "destructive";
     if (daysLeft <= 90) return "secondary";
@@ -83,7 +85,7 @@ export default function ExpiryAlertsPage() {
           </SelectContent>
         </Select>
         <span className="text-sm text-muted-foreground">
-          {isLoading ? "Loading..." : `${(items as any[]).length} batches found`}
+          {isLoading ? "Loading..." : `${(items as ExpiringBatch[]).length} batches found`}
         </span>
       </div>
 
@@ -98,14 +100,13 @@ export default function ExpiryAlertsPage() {
                   <th className="text-left px-4 py-3 font-medium text-muted-foreground">Expiry Date</th>
                   <th className="text-center px-4 py-3 font-medium text-muted-foreground">Days Left</th>
                   <th className="text-right px-4 py-3 font-medium text-muted-foreground">Qty (Units)</th>
-                  <th className="text-left px-4 py-3 font-medium text-muted-foreground">Rack</th>
-                  <th className="text-right px-4 py-3 font-medium text-muted-foreground">Value (PKR)</th>
+                  <th className="text-right px-4 py-3 font-medium text-muted-foreground">Qty (Packs)</th>
                 </tr>
               </thead>
               <tbody>
                 {isLoading ? (
                   <tr><td colSpan={7} className="text-center py-8 text-muted-foreground">Loading...</td></tr>
-                ) : (items as any[]).length === 0 ? (
+                ) : (items as ExpiringBatch[]).length === 0 ? (
                   <tr>
                     <td colSpan={7} className="text-center py-12">
                       <Clock className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
@@ -113,7 +114,7 @@ export default function ExpiryAlertsPage() {
                     </td>
                   </tr>
                 ) : (
-                  (items as any[]).map((item) => {
+                  (items as ExpiringBatch[]).map((item) => {
                     const daysLeft = getDaysLeft(item.expiryDate);
                     return (
                       <tr
@@ -125,15 +126,12 @@ export default function ExpiryAlertsPage() {
                         <td className="px-4 py-3 font-mono text-xs">{item.batchNo}</td>
                         <td className="px-4 py-3">{item.expiryDate}</td>
                         <td className="px-4 py-3 text-center">
-                          <Badge variant={getColor(daysLeft) as any}>
+                          <Badge variant={getColor(daysLeft)}>
                             {daysLeft < 0 ? `${Math.abs(daysLeft)}d expired` : `${daysLeft}d`}
                           </Badge>
                         </td>
                         <td className="px-4 py-3 text-right font-medium">{item.quantityUnits}</td>
-                        <td className="px-4 py-3 text-muted-foreground">{item.rackName ?? "—"}</td>
-                        <td className="px-4 py-3 text-right">
-                          {(item.quantityUnits * item.salePrice).toLocaleString("en-PK", { maximumFractionDigits: 0 })}
-                        </td>
+                        <td className="px-4 py-3 text-right font-medium text-muted-foreground">{item.quantityPacks} packs</td>
                       </tr>
                     );
                   })

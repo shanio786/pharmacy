@@ -11,6 +11,7 @@ import {
   supplierLedgerTable,
   saleItemsTable,
   salesTable,
+  companiesTable,
 } from "@workspace/db";
 
 const router = Router();
@@ -234,34 +235,49 @@ router.get("/purchases/:id", requireAuth, async (req, res) => {
   res.json({ ...purchase, items });
 });
 
-router.post("/purchases/generate-sale-based-po", requireAuth, requirePharmacist, async (req, res) => {
-  const { dateFrom, dateTo, supplierId } = req.body as {
+// POST /purchases/sale-based-po → DraftPOItem[] (matches generated client URL and contract)
+router.post("/purchases/sale-based-po", requireAuth, requirePharmacist, async (req, res) => {
+  const { dateFrom, dateTo } = req.body as {
     dateFrom: string;
     dateTo: string;
-    supplierId?: number;
   };
+
   const rows = await db
     .select({
       medicineId: saleItemsTable.medicineId,
       medicineName: medicinesTable.name,
-      soldQty: sql<number>`SUM(${saleItemsTable.quantityUnits})`,
+      companyName: companiesTable.name,
+      unitsPerPack: medicinesTable.unitsPerPack,
+      purchasePrice: medicinesTable.purchasePriceUnit,
+      unitsSold: sql<number>`SUM(${saleItemsTable.quantityUnits})`,
       currentStock: sql<number>`COALESCE((SELECT SUM(b.quantity_units) FROM batches b WHERE b.medicine_id = ${saleItemsTable.medicineId} AND b.expiry_date >= CURRENT_DATE), 0)`,
     })
     .from(saleItemsTable)
     .innerJoin(salesTable, eq(saleItemsTable.saleId, salesTable.id))
     .innerJoin(medicinesTable, eq(saleItemsTable.medicineId, medicinesTable.id))
+    .leftJoin(companiesTable, eq(medicinesTable.companyId, companiesTable.id))
     .where(and(gte(salesTable.date, dateFrom), lte(salesTable.date, dateTo)))
-    .groupBy(saleItemsTable.medicineId, medicinesTable.name);
+    .groupBy(
+      saleItemsTable.medicineId, medicinesTable.name, companiesTable.name,
+      medicinesTable.unitsPerPack, medicinesTable.purchasePriceUnit,
+    );
 
-  const poItems = rows.map((r) => ({
-    medicineId: r.medicineId,
-    medicineName: r.medicineName,
-    soldQty: Number(r.soldQty),
-    currentStock: Number(r.currentStock),
-    suggestedQty: Math.max(0, Number(r.soldQty) - Number(r.currentStock)),
-  }));
+  const items = rows.map((r) => {
+    const unitsSold = Number(r.unitsSold);
+    const currentStock = Number(r.currentStock);
+    const suggestedUnits = Math.max(0, unitsSold - currentStock);
+    const unitsPerPack = r.unitsPerPack > 0 ? r.unitsPerPack : 1;
+    return {
+      medicineId: r.medicineId,
+      medicineName: r.medicineName,
+      companyName: r.companyName ?? null,
+      unitsSold,
+      suggestedPacks: Math.ceil(suggestedUnits / unitsPerPack),
+      purchasePrice: Number(r.purchasePrice),
+    };
+  });
 
-  res.json(poItems.filter((i) => i.suggestedQty > 0));
+  res.json(items.filter((i) => i.suggestedPacks > 0));
 });
 
 export default router;

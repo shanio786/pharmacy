@@ -25,10 +25,10 @@ export default function LoginPage() {
     try {
       await login(username, password);
       navigate("/");
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast({
         title: "Login failed",
-        description: err?.message ?? "Invalid credentials",
+        description: err instanceof Error ? err.message : "Invalid credentials",
         variant: "destructive",
       });
     }

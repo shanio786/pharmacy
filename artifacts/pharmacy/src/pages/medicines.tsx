@@ -2,9 +2,9 @@ import { useState } from "react";
 import {
   useListMedicines, useCreateMedicine, useUpdateMedicine, useDeleteMedicine,
   useGetMedicineBatches, useListCategories, useListCompanies, useListUnits,
-  useListRacks, useListGenericNames, useAdjustStock,
+  useListRacks, useListGenericNames, useAdjustStock, getGetMedicineBatchesQueryKey,
 } from "@workspace/api-client-react";
-import type { MedicineWithStock, CreateMedicineBody } from "@workspace/api-client-react";
+import type { MedicineWithStock, CreateMedicineBody, Batch, Category, Company, Unit, Rack, GenericName } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -57,7 +57,10 @@ export default function MedicinesPage() {
   const { data: racks = [] } = useListRacks();
   const { data: generics = [] } = useListGenericNames();
   const { data: batches = [] } = useGetMedicineBatches(batchMed?.id ?? 0, {
-    query: { enabled: !!batchMed } as any,
+    query: {
+      queryKey: getGetMedicineBatchesQueryKey(batchMed?.id ?? 0),
+      enabled: !!batchMed,
+    },
   });
 
   const createMed = useCreateMedicine();
@@ -109,8 +112,8 @@ export default function MedicinesPage() {
       }
       setShowDialog(false);
       qc.invalidateQueries();
-    } catch (err: any) {
-      toast({ title: "Error", description: err?.message, variant: "destructive" });
+    } catch (err: unknown) {
+      toast({ title: "Error", description: err instanceof Error ? err.message : "Request failed", variant: "destructive" });
     }
   };
 
@@ -120,8 +123,8 @@ export default function MedicinesPage() {
       await deleteMed.mutateAsync({ id });
       toast({ title: "Medicine deleted" });
       qc.invalidateQueries();
-    } catch (err: any) {
-      toast({ title: "Error", description: err?.message, variant: "destructive" });
+    } catch (err: unknown) {
+      toast({ title: "Error", description: err instanceof Error ? err.message : "Request failed", variant: "destructive" });
     }
   };
 
@@ -134,12 +137,12 @@ export default function MedicinesPage() {
       toast({ title: "Stock adjusted" });
       setShowAdjust(false);
       qc.invalidateQueries();
-    } catch (err: any) {
-      toast({ title: "Error", description: err?.message, variant: "destructive" });
+    } catch (err: unknown) {
+      toast({ title: "Error", description: err instanceof Error ? err.message : "Request failed", variant: "destructive" });
     }
   };
 
-  const f = (field: keyof typeof form) => (value: any) =>
+  const f = (field: keyof typeof form) => ( value: string | number | boolean | null) =>
     setForm((prev) => ({ ...prev, [field]: value }));
 
   return (
@@ -172,7 +175,7 @@ export default function MedicinesPage() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Categories</SelectItem>
-            {(categories as any[]).map((c) => (
+            {( categories as Category[]).map((c) => (
               <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
             ))}
           </SelectContent>
@@ -284,7 +287,7 @@ export default function MedicinesPage() {
                 <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">— None —</SelectItem>
-                  {(generics as any[]).map((g) => <SelectItem key={g.id} value={String(g.id)}>{g.name}</SelectItem>)}
+                  {( generics as GenericName[]).map((g) => <SelectItem key={g.id} value={String(g.id)}>{g.name}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -294,7 +297,7 @@ export default function MedicinesPage() {
                 <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">— None —</SelectItem>
-                  {(categories as any[]).map((c) => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}
+                  {( categories as Category[]).map((c) => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -304,7 +307,7 @@ export default function MedicinesPage() {
                 <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">— None —</SelectItem>
-                  {(companies as any[]).map((c) => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}
+                  {( companies as Company[]).map((c) => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -314,7 +317,7 @@ export default function MedicinesPage() {
                 <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">— None —</SelectItem>
-                  {(units as any[]).map((u) => <SelectItem key={u.id} value={String(u.id)}>{u.name}</SelectItem>)}
+                  {( units as Unit[]).map((u) => <SelectItem key={u.id} value={String(u.id)}>{u.name}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -324,7 +327,7 @@ export default function MedicinesPage() {
                 <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">— None —</SelectItem>
-                  {(racks as any[]).map((r) => <SelectItem key={r.id} value={String(r.id)}>{r.name}</SelectItem>)}
+                  {( racks as Rack[]).map((r) => <SelectItem key={r.id} value={String(r.id)}>{r.name}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -402,7 +405,7 @@ export default function MedicinesPage() {
                 </tr>
               </thead>
               <tbody>
-                {(batches as any[]).map((b) => (
+                {( batches as Batch[]).map((b) => (
                   <tr key={b.id} className="border-b last:border-0">
                     <td className="py-2">{b.batchNo}</td>
                     <td className="py-2">{b.expiryDate}</td>
@@ -410,7 +413,7 @@ export default function MedicinesPage() {
                     <td className="py-2 text-right">PKR {b.salePrice?.toFixed(2)}</td>
                   </tr>
                 ))}
-                {(batches as any[]).length === 0 && (
+                {( batches as Batch[]).length === 0 && (
                   <tr><td colSpan={4} className="py-6 text-center text-muted-foreground">No batches</td></tr>
                 )}
               </tbody>

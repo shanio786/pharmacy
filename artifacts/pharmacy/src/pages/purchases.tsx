@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useListPurchases, useCreatePurchase, useListSuppliers, useListMedicines } from "@workspace/api-client-react";
-import type { CreatePurchaseBody, CreatePurchaseItemBody } from "@workspace/api-client-react";
+import type { CreatePurchaseBody, CreatePurchaseItemBody, Supplier, Purchase, MedicineWithStock } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,7 +17,8 @@ interface GRNItem extends CreatePurchaseItemBody {
   medicineName: string;
 }
 
-const STATUS_COLORS: Record<string, string> = {
+type BadgeVariant = "default" | "destructive" | "outline" | "secondary";
+const STATUS_COLORS: Record<string, BadgeVariant> = {
   draft: "secondary",
   received: "default",
   partial: "outline",
@@ -51,7 +52,7 @@ export default function PurchasesPage() {
   const { data: medResults = [] } = useListMedicines(medSearch.length >= 2 ? { search: medSearch } : undefined);
   const createPurchase = useCreatePurchase();
 
-  const addItem = (med: any) => {
+  const addItem = (med: MedicineWithStock) => {
     setItems((prev) => [
       ...prev,
       {
@@ -68,7 +69,7 @@ export default function PurchasesPage() {
     setAddingMed(false);
   };
 
-  const updateItem = (idx: number, field: string, value: any) => {
+  const updateItem = (idx: number, field: string, value: string | number) => {
     setItems((prev) => {
       const u = [...prev];
       u[idx] = { ...u[idx], [field]: value };
@@ -112,8 +113,8 @@ export default function PurchasesPage() {
       setInvoiceNo("");
       setNotes("");
       qc.invalidateQueries();
-    } catch (err: any) {
-      toast({ title: "Error", description: err?.message, variant: "destructive" });
+    } catch (err: unknown) {
+      toast({ title: "Error", description: err instanceof Error ? err.message : "Request failed", variant: "destructive" });
     }
   };
 
@@ -135,7 +136,7 @@ export default function PurchasesPage() {
           <SelectTrigger className="w-44"><SelectValue placeholder="All Suppliers" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Suppliers</SelectItem>
-            {(suppliers as any[]).map((s) => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}
+            {(suppliers as Supplier[]).map((s) => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}
           </SelectContent>
         </Select>
         <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="w-36" placeholder="From" />
@@ -158,10 +159,10 @@ export default function PurchasesPage() {
               <tbody>
                 {isLoading ? (
                   <tr><td colSpan={5} className="text-center py-8 text-muted-foreground">Loading...</td></tr>
-                ) : (purchases as any[]).length === 0 ? (
+                ) : (purchases as Purchase[]).length === 0 ? (
                   <tr><td colSpan={5} className="text-center py-8 text-muted-foreground">No purchases found</td></tr>
                 ) : (
-                  (purchases as any[]).map((p) => (
+                  (purchases as Purchase[]).map((p) => (
                     <tr key={p.id} className="border-b last:border-0 hover:bg-muted/20">
                       <td className="px-4 py-3">{p.date}</td>
                       <td className="px-4 py-3 font-medium">{p.invoiceNo ?? "—"}</td>
@@ -170,7 +171,7 @@ export default function PurchasesPage() {
                         PKR {Number(p.totalAmount).toLocaleString("en-PK", { maximumFractionDigits: 2 })}
                       </td>
                       <td className="px-4 py-3 text-center">
-                        <Badge variant={(STATUS_COLORS[p.status] as any) ?? "secondary"}>
+                        <Badge variant={STATUS_COLORS[p.status] ?? "secondary"}>
                           {p.status}
                         </Badge>
                       </td>
@@ -197,7 +198,7 @@ export default function PurchasesPage() {
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">— None —</SelectItem>
-                  {(suppliers as any[]).map((s) => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}
+                  {(suppliers as Supplier[]).map((s) => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -237,7 +238,7 @@ export default function PurchasesPage() {
                 />
                 {medSearch.length >= 2 && (
                   <div className="absolute z-10 top-full left-0 right-0 bg-popover border rounded-lg shadow-lg max-h-48 overflow-y-auto mt-1">
-                    {(medResults as any[]).map((m) => (
+                    {(medResults as MedicineWithStock[]).map((m) => (
                       <button
                         key={m.id}
                         className="w-full text-left px-3 py-2 text-sm hover:bg-muted/50"
@@ -249,7 +250,7 @@ export default function PurchasesPage() {
                         <span className="text-muted-foreground ml-2">{m.companyName}</span>
                       </button>
                     ))}
-                    {(medResults as any[]).length === 0 && (
+                    {(medResults as MedicineWithStock[]).length === 0 && (
                       <p className="px-3 py-4 text-sm text-muted-foreground text-center">No results</p>
                     )}
                   </div>

@@ -1,8 +1,9 @@
 import { useState } from "react";
 import {
   useListSuppliers, useCreateSupplier, useUpdateSupplier, useDeleteSupplier,
-  useGetSupplierLedger, usePaySupplier,
+  useGetSupplierLedger, usePaySupplier, getGetSupplierLedgerQueryKey,
 } from "@workspace/api-client-react";
+import type { Supplier, LedgerResponse, LedgerEntry } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,21 +44,26 @@ export default function SuppliersPage() {
   const { data: ledger } = useGetSupplierLedger(
     ledgerSupplier?.id ?? 0,
     {},
-    { query: { enabled: !!ledgerSupplier } as any }
+    {
+      query: {
+        queryKey: getGetSupplierLedgerQueryKey(ledgerSupplier?.id ?? 0, {}),
+        enabled: !!ledgerSupplier,
+      },
+    }
   );
   const createSupplier = useCreateSupplier();
   const updateSupplier = useUpdateSupplier();
   const deleteSupplier = useDeleteSupplier();
   const paySupplier = usePaySupplier();
 
-  const filtered = (suppliers as any[]).filter((s) =>
+  const filtered = (suppliers as Supplier[]).filter((s) =>
     !search || s.name.toLowerCase().includes(search.toLowerCase()) || (s.phone ?? "").includes(search)
   );
 
-  const openCreate = () => { setEditItem(null); setForm({ name: "", openingBalance: 0 }); setShowDialog(true); };
-  const openEdit = (s: any) => {
+  const openCreate = () => { setEditItem(null); setForm({ name: "" }); setShowDialog(true); };
+  const openEdit = (s: Supplier) => {
     setEditItem(s);
-    setForm({ name: s.name, contactPerson: s.contactPerson ?? "", phone: s.phone ?? "", email: s.email ?? "", address: s.address ?? "", ntn: s.ntn ?? "", openingBalance: s.openingBalance ?? 0 });
+    setForm({ name: s.name, contactPerson: s.contactPerson ?? "", phone: s.phone ?? "", email: s.email ?? "", address: s.address ?? "" });
     setShowDialog(true);
   };
 
@@ -73,7 +79,7 @@ export default function SuppliersPage() {
       }
       setShowDialog(false);
       qc.invalidateQueries();
-    } catch (err: any) { toast({ title: "Error", description: err?.message, variant: "destructive" }); }
+    } catch (err: unknown) { toast({ title: "Error", description: err instanceof Error ? err.message : "Request failed", variant: "destructive" }); }
   };
 
   const handleDelete = async (id: number) => {
@@ -82,7 +88,7 @@ export default function SuppliersPage() {
       await deleteSupplier.mutateAsync({ id });
       toast({ title: "Supplier deleted" });
       qc.invalidateQueries();
-    } catch (err: any) { toast({ title: "Error", description: err?.message, variant: "destructive" }); }
+    } catch (err: unknown) { toast({ title: "Error", description: err instanceof Error ? err.message : "Request failed", variant: "destructive" }); }
   };
 
   const handlePay = async () => {
@@ -92,13 +98,13 @@ export default function SuppliersPage() {
       toast({ title: "Payment recorded" });
       setShowPayment(false);
       qc.invalidateQueries();
-    } catch (err: any) { toast({ title: "Error", description: err?.message, variant: "destructive" }); }
+    } catch (err: unknown) { toast({ title: "Error", description: err instanceof Error ? err.message : "Request failed", variant: "destructive" }); }
   };
 
   const f = (field: keyof SupplierForm) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm((p) => ({ ...p, [field]: e.target.value }));
 
-  const ledgerData = ledger as any;
+  const ledgerData = ledger as LedgerResponse | undefined;
   const balance = ledgerData?.balance ?? 0;
 
   return (
@@ -224,16 +230,16 @@ export default function SuppliersPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {(ledgerData?.entries ?? []).map((e: any, i: number) => (
+                  {(ledgerData?.entries ?? []).map((e: LedgerEntry, i: number) => (
                     <tr key={i} className="border-b last:border-0">
                       <td className="py-2">{e.date}</td>
                       <td className="py-2">
-                        <Badge variant={e.type === "purchase" ? "default" : "secondary"} className="text-xs capitalize">{e.type}</Badge>
+                        <Badge variant={e.referenceType === "purchase" ? "default" : "secondary"} className="text-xs capitalize">{e.referenceType}</Badge>
                       </td>
-                      <td className={`py-2 text-right font-medium ${e.type === "payment" ? "text-green-600" : "text-destructive"}`}>
-                        {e.type === "payment" ? "-" : "+"}PKR {Math.abs(Number(e.amount)).toLocaleString("en-PK", { maximumFractionDigits: 0 })}
+                      <td className={`py-2 text-right font-medium ${e.credit > 0 ? "text-green-600" : "text-destructive"}`}>
+                        {e.credit > 0 ? "-" : "+"}PKR {Math.abs(e.debit > 0 ? e.debit : e.credit).toLocaleString("en-PK", { maximumFractionDigits: 0 })}
                       </td>
-                      <td className="py-2 text-muted-foreground">{e.notes ?? "—"}</td>
+                      <td className="py-2 text-muted-foreground">{e.description ?? "—"}</td>
                     </tr>
                   ))}
                   {(ledgerData?.entries ?? []).length === 0 && (

@@ -38,8 +38,8 @@ export default function MissedSalesPage() {
       setShowDialog(false);
       setForm({ medicineName: "", genericName: null, quantityDemanded: 1, customerNote: null, date: format(new Date(), "yyyy-MM-dd") });
       qc.invalidateQueries();
-    } catch (err: any) {
-      toast({ title: "Error", description: err?.message, variant: "destructive" });
+    } catch (err: unknown) {
+      toast({ title: "Error", description: err instanceof Error ? err.message : "Request failed", variant: "destructive" });
     }
   };
 
@@ -49,8 +49,8 @@ export default function MissedSalesPage() {
       await deleteMissed.mutateAsync({ id });
       toast({ title: "Record removed" });
       qc.invalidateQueries();
-    } catch (err: any) {
-      toast({ title: "Error", description: err?.message, variant: "destructive" });
+    } catch (err: unknown) {
+      toast({ title: "Error", description: err instanceof Error ? err.message : "Request failed", variant: "destructive" });
     }
   };
 
