@@ -80,6 +80,10 @@ router.delete("/customers/:id", requireAuth, requireManager, async (req, res) =>
 
 router.get("/customers/:id/ledger", requireAuth, async (req, res) => {
   const id = Number(req.params["id"]);
+  if (!Number.isFinite(id) || id <= 0) {
+    res.status(400).json({ error: "Invalid customer id" });
+    return;
+  }
   const [customer] = await db
     .select()
     .from(customersTable)
@@ -89,22 +93,52 @@ router.get("/customers/:id/ledger", requireAuth, async (req, res) => {
     res.status(404).json({ error: "Customer not found" });
     return;
   }
-  const entries = await db
+  const rows = await db
     .select()
     .from(customerLedgerTable)
     .where(eq(customerLedgerTable.customerId, id))
-    .orderBy(desc(customerLedgerTable.date));
+    .orderBy(desc(customerLedgerTable.date), desc(customerLedgerTable.id));
+
+  // Map raw rows to AccountLedgerEntry DTO
+  const entries = rows.map((r) => {
+    const amt = Number(r.amount);
+    const absAmt = Math.abs(amt);
+    let debit = 0;
+    let credit = 0;
+    if (r.type === "sale") debit = absAmt;
+    else if (r.type === "return") credit = absAmt;
+    else if (r.type === "payment") credit = absAmt;
+    else { if (amt >= 0) debit = absAmt; else credit = absAmt; }
+    return {
+      id: r.id,
+      date: r.date,
+      type: r.type,
+      referenceId: r.referenceId,
+      description: r.notes,
+      debit,
+      credit,
+      balance: Number(r.balance),
+    };
+  });
 
   res.json({ customer, entries, balance: Number(customer.balance) });
 });
 
 router.post("/customers/:id/payment", requireAuth, requireManager, async (req, res) => {
   const id = Number(req.params["id"]);
+  if (!Number.isFinite(id) || id <= 0) {
+    res.status(400).json({ error: "Invalid customer id" });
+    return;
+  }
   const { amount, date, notes } = req.body as {
     amount: number;
     date: string;
     notes?: string;
   };
+  if (!Number.isFinite(amount) || amount <= 0) {
+    res.status(400).json({ error: "Amount must be a positive number" });
+    return;
+  }
 
   const [customer] = await db
     .select()

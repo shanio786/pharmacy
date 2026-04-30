@@ -3,7 +3,7 @@ import {
   useListCustomers, useCreateCustomer, useUpdateCustomer, useDeleteCustomer,
   useGetCustomerLedger, useReceiveCustomerPayment, getGetCustomerLedgerQueryKey,
 } from "@workspace/api-client-react";
-import type { Customer, LedgerResponse, LedgerEntry } from "@workspace/api-client-react";
+import type { Customer, LedgerResponse, AccountLedgerEntry } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -92,7 +92,7 @@ export default function CustomersPage() {
   const handleReceive = async () => {
     if (!ledgerCustomer || recvAmount <= 0) { toast({ title: "Enter a valid amount", variant: "destructive" }); return; }
     try {
-      await receivePayment.mutateAsync({ id: ledgerCustomer.id, data: { amount: recvAmount, date: recvDate, note: recvNote || null } });
+      await receivePayment.mutateAsync({ id: ledgerCustomer.id, data: { amount: recvAmount, date: recvDate, notes: recvNote || null } });
       toast({ title: "Payment received" });
       setShowReceive(false);
       qc.invalidateQueries();
@@ -224,11 +224,11 @@ export default function CustomersPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {(ledgerData?.entries ?? []).map((e: LedgerEntry, i: number) => (
+                  {(ledgerData?.entries ?? []).map((e: AccountLedgerEntry, i: number) => (
                     <tr key={i} className="border-b last:border-0">
                       <td className="py-2">{e.date}</td>
                       <td className="py-2">
-                        <Badge variant={e.referenceType === "sale" ? "default" : "secondary"} className="text-xs capitalize">{e.referenceType}</Badge>
+                        <Badge variant={e.type === "sale" ? "default" : "secondary"} className="text-xs capitalize">{e.type}</Badge>
                       </td>
                       <td className={`py-2 text-right font-medium ${e.credit > 0 ? "text-green-600" : "text-destructive"}`}>
                         {e.credit > 0 ? "-" : "+"}PKR {Math.abs(e.debit > 0 ? e.debit : e.credit).toLocaleString("en-PK", { maximumFractionDigits: 0 })}

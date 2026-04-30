@@ -5,16 +5,23 @@
  * PharmaCare Pharmacy Management System API
  * OpenAPI spec version: 0.1.0
  */
+import type { CreateSaleBodyPrescription } from "./createSaleBodyPrescription";
 import type { CreateSaleItemBody } from "./createSaleItemBody";
 
 export interface CreateSaleBody {
   /** @nullable */
   customerId?: number | null;
+  /** @nullable */
+  patientName?: string | null;
+  /** @nullable */
+  prescribedBy?: string | null;
   date: string;
   discountAmount?: number;
   paidAmount: number;
   paymentMode: string;
   /** @nullable */
   notes?: string | null;
+  /** @nullable */
+  prescription?: CreateSaleBodyPrescription;
   items: CreateSaleItemBody[];
 }

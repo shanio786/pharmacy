@@ -2161,15 +2161,36 @@ components:
         entries:
           type: array
           items:
-            $ref: "#/components/schemas/LedgerEntry"
+            $ref: "#/components/schemas/AccountLedgerEntry"
       required: [balance, entries]
+
+    AccountLedgerEntry:
+      type: object
+      properties:
+        id:
+          type: integer
+        date:
+          type: string
+        type:
+          type: string
+        referenceId:
+          type: ["integer", "null"]
+        description:
+          type: ["string", "null"]
+        debit:
+          type: number
+        credit:
+          type: number
+        balance:
+          type: number
+      required: [date, type, debit, credit, balance]
 
     PaymentBody:
       type: object
       properties:
         amount:
           type: number
-        note:
+        notes:
           type: ["string", "null"]
         date:
           type: ["string", "null"]
@@ -2210,6 +2231,8 @@ components:
           type: string
         batchNo:
           type: string
+        batchId:
+          type: ["integer", "null"]
         expiryDate:
           type: string
         packsReceived:
@@ -2503,6 +2526,10 @@ components:
       properties:
         customerId:
           type: ["integer", "null"]
+        patientName:
+          type: ["string", "null"]
+        prescribedBy:
+          type: ["string", "null"]
         date:
           type: string
         discountAmount:
@@ -2513,6 +2540,15 @@ components:
           type: string
         notes:
           type: ["string", "null"]
+        prescription:
+          type: ["object", "null"]
+          properties:
+            doctorName:
+              type: string
+            doctorLicense:
+              type: ["string", "null"]
+            prescriptionDate:
+              type: string
         items:
           type: array
           items:

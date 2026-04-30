@@ -107,6 +107,30 @@ router.post("/sales", requireAuth, async (req, res) => {
     return;
   }
 
+  // Validate item quantities and prices are non-negative numbers
+  for (const it of items) {
+    if (!Number.isFinite(it.quantity) || it.quantity <= 0) {
+      res.status(400).json({ error: "Each item quantity must be a positive number" });
+      return;
+    }
+    if (!Number.isFinite(it.salePrice) || it.salePrice < 0) {
+      res.status(400).json({ error: "Each item salePrice must be a non-negative number" });
+      return;
+    }
+    if (it.discountPercent != null && (!Number.isFinite(it.discountPercent) || it.discountPercent < 0 || it.discountPercent > 100)) {
+      res.status(400).json({ error: "discountPercent must be between 0 and 100" });
+      return;
+    }
+  }
+  if (paidAmount != null && (!Number.isFinite(paidAmount) || paidAmount < 0)) {
+    res.status(400).json({ error: "paidAmount must be a non-negative number" });
+    return;
+  }
+  if (discountAmount != null && (!Number.isFinite(discountAmount) || discountAmount < 0)) {
+    res.status(400).json({ error: "discountAmount must be a non-negative number" });
+    return;
+  }
+
   const today = new Date().toISOString().slice(0, 10);
 
   type BatchAllocation = {
@@ -258,8 +282,20 @@ router.post("/sales", requireAuth, async (req, res) => {
 
   const subtotal = allocations.reduce((sum, a) => sum + a.lineTotal, 0);
   const disc = discountAmount ?? 0;
+  if (disc > subtotal) {
+    res.status(400).json({ error: "discountAmount cannot exceed subtotal" });
+    return;
+  }
   const totalAmount = subtotal - disc;
+  if (totalAmount < 0) {
+    res.status(400).json({ error: "totalAmount cannot be negative" });
+    return;
+  }
   const paid = paidAmount ?? totalAmount;
+  if (paid < 0) {
+    res.status(400).json({ error: "paidAmount cannot be negative" });
+    return;
+  }
   const status = paid >= totalAmount ? "completed" : paid > 0 ? "partial" : "credit";
   const invoiceNo = generateInvoiceNo();
 

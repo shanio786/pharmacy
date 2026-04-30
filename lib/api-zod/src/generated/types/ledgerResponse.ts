@@ -5,9 +5,9 @@
  * PharmaCare Pharmacy Management System API
  * OpenAPI spec version: 0.1.0
  */
-import type { LedgerEntry } from "./ledgerEntry";
+import type { AccountLedgerEntry } from "./accountLedgerEntry";
 
 export interface LedgerResponse {
   balance: number;
-  entries: LedgerEntry[];
+  entries: AccountLedgerEntry[];
 }

@@ -549,9 +549,11 @@ export const GetSupplierLedgerResponse = zod.object({
   balance: zod.number(),
   entries: zod.array(
     zod.object({
+      id: zod.number().optional(),
       date: zod.string(),
       type: zod.string(),
-      reference: zod.string(),
+      referenceId: zod.number().nullish(),
+      description: zod.string().nullish(),
       debit: zod.number(),
       credit: zod.number(),
       balance: zod.number(),
@@ -565,7 +567,7 @@ export const PaySupplierParams = zod.object({
 
 export const PaySupplierBody = zod.object({
   amount: zod.number(),
-  note: zod.string().nullish(),
+  notes: zod.string().nullish(),
   date: zod.string().nullish(),
 });
 
@@ -643,9 +645,11 @@ export const GetCustomerLedgerResponse = zod.object({
   balance: zod.number(),
   entries: zod.array(
     zod.object({
+      id: zod.number().optional(),
       date: zod.string(),
       type: zod.string(),
-      reference: zod.string(),
+      referenceId: zod.number().nullish(),
+      description: zod.string().nullish(),
       debit: zod.number(),
       credit: zod.number(),
       balance: zod.number(),
@@ -659,7 +663,7 @@ export const ReceiveCustomerPaymentParams = zod.object({
 
 export const ReceiveCustomerPaymentBody = zod.object({
   amount: zod.number(),
-  note: zod.string().nullish(),
+  notes: zod.string().nullish(),
   date: zod.string().nullish(),
 });
 
@@ -727,6 +731,7 @@ export const GetPurchaseResponse = zod
           medicineId: zod.number(),
           medicineName: zod.string(),
           batchNo: zod.string(),
+          batchId: zod.number().nullish(),
           expiryDate: zod.string(),
           packsReceived: zod.number(),
           unitsReceived: zod.number(),
@@ -869,11 +874,20 @@ export const ListSalesResponse = zod.array(ListSalesResponseItem);
  */
 export const CreateSaleBody = zod.object({
   customerId: zod.number().nullish(),
+  patientName: zod.string().nullish(),
+  prescribedBy: zod.string().nullish(),
   date: zod.string(),
   discountAmount: zod.number().optional(),
   paidAmount: zod.number(),
   paymentMode: zod.string(),
   notes: zod.string().nullish(),
+  prescription: zod
+    .object({
+      doctorName: zod.string().optional(),
+      doctorLicense: zod.string().nullish(),
+      prescriptionDate: zod.string().optional(),
+    })
+    .nullish(),
   items: zod.array(
     zod.object({
       medicineId: zod.number(),

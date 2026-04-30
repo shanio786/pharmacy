@@ -11,6 +11,8 @@ export interface PurchaseItem {
   medicineId: number;
   medicineName: string;
   batchNo: string;
+  /** @nullable */
+  batchId?: number | null;
   expiryDate: string;
   packsReceived: number;
   unitsReceived: number;

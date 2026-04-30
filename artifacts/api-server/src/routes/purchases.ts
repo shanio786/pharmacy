@@ -70,6 +70,25 @@ router.post("/purchases", requireAuth, requireManager, async (req, res) => {
     return;
   }
 
+  for (const it of items) {
+    if (!Number.isFinite(it.packsReceived) || it.packsReceived <= 0) {
+      res.status(400).json({ error: "Each item packsReceived must be a positive number" });
+      return;
+    }
+    if (!Number.isFinite(it.purchasePrice) || it.purchasePrice < 0) {
+      res.status(400).json({ error: "Each item purchasePrice must be a non-negative number" });
+      return;
+    }
+    if (!Number.isFinite(it.salePrice) || it.salePrice < 0) {
+      res.status(400).json({ error: "Each item salePrice must be a non-negative number" });
+      return;
+    }
+  }
+  if (paidAmount != null && (!Number.isFinite(paidAmount) || paidAmount < 0)) {
+    res.status(400).json({ error: "paidAmount must be a non-negative number" });
+    return;
+  }
+
   let totalAmount = 0;
   const enrichedItems = await Promise.all(
     items.map(async (item) => {

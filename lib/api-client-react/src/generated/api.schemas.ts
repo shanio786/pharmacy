@@ -266,10 +266,14 @@ export interface CreateCustomerBody {
   creditLimit?: number;
 }
 
-export interface LedgerEntry {
+export interface AccountLedgerEntry {
+  id?: number;
   date: string;
   type: string;
-  reference: string;
+  /** @nullable */
+  referenceId?: number | null;
+  /** @nullable */
+  description?: string | null;
   debit: number;
   credit: number;
   balance: number;
@@ -277,13 +281,13 @@ export interface LedgerEntry {
 
 export interface LedgerResponse {
   balance: number;
-  entries: LedgerEntry[];
+  entries: AccountLedgerEntry[];
 }
 
 export interface PaymentBody {
   amount: number;
   /** @nullable */
-  note?: string | null;
+  notes?: string | null;
   /** @nullable */
   date?: string | null;
 }
@@ -309,6 +313,8 @@ export interface PurchaseItem {
   medicineId: number;
   medicineName: string;
   batchNo: string;
+  /** @nullable */
+  batchId?: number | null;
   expiryDate: string;
   packsReceived: number;
   unitsReceived: number;
@@ -477,6 +483,16 @@ export type SaleWithItems = Sale & {
   items: SaleItem[];
 };
 
+/**
+ * @nullable
+ */
+export type CreateSaleBodyPrescription = {
+  doctorName?: string;
+  /** @nullable */
+  doctorLicense?: string | null;
+  prescriptionDate?: string;
+} | null;
+
 export interface CreateSaleItemBody {
   medicineId: number;
   /** @nullable */
@@ -492,12 +508,18 @@ export interface CreateSaleItemBody {
 export interface CreateSaleBody {
   /** @nullable */
   customerId?: number | null;
+  /** @nullable */
+  patientName?: string | null;
+  /** @nullable */
+  prescribedBy?: string | null;
   date: string;
   discountAmount?: number;
   paidAmount: number;
   paymentMode: string;
   /** @nullable */
   notes?: string | null;
+  /** @nullable */
+  prescription?: CreateSaleBodyPrescription;
   items: CreateSaleItemBody[];
 }
 
@@ -849,6 +871,15 @@ export interface StockAuditVarianceReport {
   totalSurplus: number;
   totalShortage: number;
   items: StockAuditVarianceItem[];
+}
+
+export interface LedgerEntry {
+  date: string;
+  type: string;
+  reference: string;
+  debit: number;
+  credit: number;
+  balance: number;
 }
 
 export type CustomerLedgerReportCustomer = {

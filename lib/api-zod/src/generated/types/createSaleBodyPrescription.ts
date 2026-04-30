@@ -6,10 +6,12 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface PaymentBody {
-  amount: number;
+/**
+ * @nullable
+ */
+export type CreateSaleBodyPrescription = {
+  doctorName?: string;
   /** @nullable */
-  notes?: string | null;
-  /** @nullable */
-  date?: string | null;
-}
+  doctorLicense?: string | null;
+  prescriptionDate?: string;
+} | null;

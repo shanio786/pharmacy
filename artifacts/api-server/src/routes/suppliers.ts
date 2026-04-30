@@ -85,22 +85,54 @@ router.get("/suppliers/:id/ledger", requireAuth, async (req, res) => {
     res.status(404).json({ error: "Supplier not found" });
     return;
   }
-  const entries = await db
+  const rows = await db
     .select()
     .from(supplierLedgerTable)
     .where(eq(supplierLedgerTable.supplierId, id))
-    .orderBy(desc(supplierLedgerTable.date));
+    .orderBy(desc(supplierLedgerTable.date), desc(supplierLedgerTable.id));
+
+  // Map raw rows to AccountLedgerEntry DTO
+  // Supplier ledger convention: balance = how much WE owe supplier.
+  // credit (we owe more): purchase. debit (we owe less): payment, return.
+  const entries = rows.map((r) => {
+    const amt = Number(r.amount);
+    const absAmt = Math.abs(amt);
+    let debit = 0;
+    let credit = 0;
+    if (r.type === "purchase") credit = absAmt;
+    else if (r.type === "return") debit = absAmt;
+    else if (r.type === "payment") debit = absAmt;
+    else { if (amt >= 0) credit = absAmt; else debit = absAmt; }
+    return {
+      id: r.id,
+      date: r.date,
+      type: r.type,
+      referenceId: r.referenceId,
+      description: r.notes,
+      debit,
+      credit,
+      balance: Number(r.balance),
+    };
+  });
 
   res.json({ supplier, entries, balance: Number(supplier.balance) });
 });
 
 router.post("/suppliers/:id/payment", requireAuth, requireManager, async (req, res) => {
   const id = Number(req.params["id"]);
+  if (!Number.isFinite(id) || id <= 0) {
+    res.status(400).json({ error: "Invalid supplier id" });
+    return;
+  }
   const { amount, date, notes } = req.body as {
     amount: number;
     date: string;
     notes?: string;
   };
+  if (!Number.isFinite(amount) || amount <= 0) {
+    res.status(400).json({ error: "Amount must be a positive number" });
+    return;
+  }
 
   const [supplier] = await db
     .select()
