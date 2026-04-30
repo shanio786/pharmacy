@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { eq, desc, gte, lte, and } from "drizzle-orm";
+import { eq, desc, gte, lte, and, asc, gt } from "drizzle-orm";
 import { db } from "../lib/db.js";
 import { requireAuth } from "../middlewares/auth.js";
 import {
@@ -93,8 +93,50 @@ router.post("/sales", requireAuth, async (req, res) => {
     return;
   }
 
+  // FEFO: resolve batchId for each item — use provided batch or auto-select earliest expiry
+  const today = new Date().toISOString().slice(0, 10);
+  const resolvedItems: Array<typeof items[0] & { resolvedBatchId: number; resolvedBatchNo: string }> = [];
+
+  for (const item of items) {
+    let batch: { id: number; batchNo: string; quantityUnits: number } | undefined;
+
+    if (item.batchId) {
+      const [found] = await db
+        .select({ id: batchesTable.id, batchNo: batchesTable.batchNo, quantityUnits: batchesTable.quantityUnits })
+        .from(batchesTable)
+        .where(and(eq(batchesTable.id, item.batchId), eq(batchesTable.medicineId, item.medicineId)))
+        .limit(1);
+      batch = found;
+    } else {
+      // FEFO: earliest non-expired batch with sufficient stock
+      const [found] = await db
+        .select({ id: batchesTable.id, batchNo: batchesTable.batchNo, quantityUnits: batchesTable.quantityUnits })
+        .from(batchesTable)
+        .where(and(
+          eq(batchesTable.medicineId, item.medicineId),
+          gte(batchesTable.expiryDate, today),
+          gt(batchesTable.quantityUnits, 0),
+        ))
+        .orderBy(asc(batchesTable.expiryDate))
+        .limit(1);
+      batch = found;
+    }
+
+    if (!batch) {
+      res.status(400).json({ error: `No batch found for medicine ID ${item.medicineId}` });
+      return;
+    }
+    if (batch.quantityUnits < item.quantity) {
+      res.status(400).json({
+        error: `Insufficient stock for batch ${batch.batchNo}: available ${batch.quantityUnits}, requested ${item.quantity}`,
+      });
+      return;
+    }
+    resolvedItems.push({ ...item, resolvedBatchId: batch.id, resolvedBatchNo: batch.batchNo });
+  }
+
   let subtotal = 0;
-  const itemsWithTotals = items.map((item) => {
+  const itemsWithTotals = resolvedItems.map((item) => {
     const gross = item.quantity * item.salePrice;
     const discount = ((item.discountPercent ?? 0) / 100) * gross;
     const total = gross - discount;
@@ -131,8 +173,8 @@ router.post("/sales", requireAuth, async (req, res) => {
     itemsWithTotals.map((item) => ({
       saleId: sale.id,
       medicineId: item.medicineId,
-      batchId: item.batchId,
-      batchNo: item.batchNo,
+      batchId: item.resolvedBatchId,
+      batchNo: item.resolvedBatchNo,
       quantityUnits: item.quantity,
       salePriceUnit: String(item.salePrice),
       discountPct: String(item.discountPercent ?? 0),
@@ -140,20 +182,17 @@ router.post("/sales", requireAuth, async (req, res) => {
     }))
   );
 
-  for (const item of items) {
-    if (item.batchId) {
-      const [batch] = await db
-        .select()
-        .from(batchesTable)
-        .where(eq(batchesTable.id, item.batchId))
-        .limit(1);
-      if (batch) {
-        const newQty = Math.max(0, batch.quantityUnits - item.quantity);
-        await db
-          .update(batchesTable)
-          .set({ quantityUnits: newQty })
-          .where(eq(batchesTable.id, item.batchId));
-      }
+  for (const item of itemsWithTotals) {
+    const [currentBatch] = await db
+      .select({ quantityUnits: batchesTable.quantityUnits })
+      .from(batchesTable)
+      .where(eq(batchesTable.id, item.resolvedBatchId))
+      .limit(1);
+    if (currentBatch) {
+      await db
+        .update(batchesTable)
+        .set({ quantityUnits: currentBatch.quantityUnits - item.quantity })
+        .where(eq(batchesTable.id, item.resolvedBatchId));
     }
   }
 
