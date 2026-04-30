@@ -136,7 +136,12 @@ router.post("/sales", requireAuth, async (req, res) => {
       return;
     }
 
-    let remaining = item.quantity;
+    // Convert pack quantity to units for stock tracking
+    const quantityInUnits = item.saleUnit === "pack"
+      ? item.quantity * med.unitsPerPack
+      : item.quantity;
+
+    let remaining = quantityInUnits;
 
     if (item.batchId) {
       // Caller specified a batch — validate it belongs to this medicine

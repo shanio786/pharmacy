@@ -95,92 +95,96 @@ router.post("/purchases", requireAuth, requirePharmacist, async (req, res) => {
   const paid = paidAmount ?? totalAmount;
   const status = paid >= totalAmount ? "received" : paid > 0 ? "partial" : "pending";
 
-  const [purchase] = await db
-    .insert(purchasesTable)
-    .values({
-      supplierId,
-      invoiceNo,
-      date,
-      totalAmount: String(totalAmount),
-      paidAmount: String(paid),
-      status: status as "received" | "partial" | "pending",
-      notes,
-    })
-    .returning();
+  const purchase = await db.transaction(async (tx) => {
+    const [newPurchase] = await tx
+      .insert(purchasesTable)
+      .values({
+        supplierId,
+        invoiceNo,
+        date,
+        totalAmount: String(totalAmount),
+        paidAmount: String(paid),
+        status: status as "received" | "partial" | "pending",
+        notes,
+      })
+      .returning();
 
-  await db.insert(purchaseItemsTable).values(
-    enrichedItems.map((item) => ({
-      purchaseId: purchase.id,
-      medicineId: item.medicineId,
-      batchNo: item.batchNo,
-      expiryDate: item.expiryDate,
-      quantityPacks: item.quantityPacks,
-      quantityUnits: item.quantityUnits,
-      purchasePriceUnit: String(item.purchasePriceUnit),
-      salePriceUnit: String(item.salePriceUnit),
-      totalAmount: item.totalAmount,
-    }))
-  );
-
-  for (const item of enrichedItems) {
-    const existing = await db
-      .select()
-      .from(batchesTable)
-      .where(and(
-        eq(batchesTable.medicineId, item.medicineId),
-        eq(batchesTable.batchNo, item.batchNo),
-      ))
-      .limit(1);
-
-    if (existing.length) {
-      await db
-        .update(batchesTable)
-        .set({ quantityUnits: existing[0].quantityUnits + item.quantityUnits })
-        .where(eq(batchesTable.id, existing[0].id));
-    } else {
-      await db.insert(batchesTable).values({
+    await tx.insert(purchaseItemsTable).values(
+      enrichedItems.map((item) => ({
+        purchaseId: newPurchase.id,
         medicineId: item.medicineId,
         batchNo: item.batchNo,
         expiryDate: item.expiryDate,
+        quantityPacks: item.quantityPacks,
         quantityUnits: item.quantityUnits,
-        purchasePrice: String(item.purchasePriceUnit),
-        salePrice: String(item.salePriceUnit),
-      });
-    }
-
-    await db
-      .update(medicinesTable)
-      .set({
         purchasePriceUnit: String(item.purchasePriceUnit),
         salePriceUnit: String(item.salePriceUnit),
-        salePricePack: String(item.salePriceUnit),
-      })
-      .where(eq(medicinesTable.id, item.medicineId));
-  }
+        totalAmount: item.totalAmount,
+      }))
+    );
 
-  if (supplierId) {
-    const [supplier] = await db
-      .select()
-      .from(suppliersTable)
-      .where(eq(suppliersTable.id, supplierId))
-      .limit(1);
-    if (supplier) {
-      const creditAmount = totalAmount - paid;
-      const newBalance = Number(supplier.balance) + creditAmount;
-      await db
-        .update(suppliersTable)
-        .set({ balance: String(newBalance) })
-        .where(eq(suppliersTable.id, supplierId));
-      await db.insert(supplierLedgerTable).values({
-        supplierId,
-        type: "purchase",
-        referenceId: purchase.id,
-        amount: String(totalAmount),
-        balance: String(newBalance),
-        date,
-      });
+    for (const item of enrichedItems) {
+      const existing = await tx
+        .select()
+        .from(batchesTable)
+        .where(and(
+          eq(batchesTable.medicineId, item.medicineId),
+          eq(batchesTable.batchNo, item.batchNo),
+        ))
+        .limit(1);
+
+      if (existing.length) {
+        await tx
+          .update(batchesTable)
+          .set({ quantityUnits: existing[0].quantityUnits + item.quantityUnits })
+          .where(eq(batchesTable.id, existing[0].id));
+      } else {
+        await tx.insert(batchesTable).values({
+          medicineId: item.medicineId,
+          batchNo: item.batchNo,
+          expiryDate: item.expiryDate,
+          quantityUnits: item.quantityUnits,
+          purchasePrice: String(item.purchasePriceUnit),
+          salePrice: String(item.salePriceUnit),
+        });
+      }
+
+      await tx
+        .update(medicinesTable)
+        .set({
+          purchasePriceUnit: String(item.purchasePriceUnit),
+          salePriceUnit: String(item.salePriceUnit),
+          salePricePack: String(item.salePriceUnit),
+        })
+        .where(eq(medicinesTable.id, item.medicineId));
     }
-  }
+
+    if (supplierId) {
+      const [supplier] = await tx
+        .select()
+        .from(suppliersTable)
+        .where(eq(suppliersTable.id, supplierId))
+        .limit(1);
+      if (supplier) {
+        const creditAmount = totalAmount - paid;
+        const newBalance = Number(supplier.balance) + creditAmount;
+        await tx
+          .update(suppliersTable)
+          .set({ balance: String(newBalance) })
+          .where(eq(suppliersTable.id, supplierId));
+        await tx.insert(supplierLedgerTable).values({
+          supplierId,
+          type: "purchase",
+          referenceId: newPurchase.id,
+          amount: String(totalAmount),
+          balance: String(newBalance),
+          date,
+        });
+      }
+    }
+
+    return newPurchase;
+  });
 
   res.status(201).json({ ...purchase, items: enrichedItems });
 });
