@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { useListSaleReturns, useCreateSaleReturn, useGetSale, useListSales, useListMedicines } from "@workspace/api-client-react";
-import type { CreateSaleReturnBody, CreateSaleReturnItemBody } from "@workspace/api-client-react";
+import { useListSaleReturns, useCreateSaleReturn, useGetSale, useListSales } from "@workspace/api-client-react";
+import type { CreateSaleReturnBody, CreateSaleReturnItemBody, SaleWithItems, SaleItem } from "@workspace/api-client-react";
+import type { UseQueryOptions } from "@tanstack/react-query";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,8 +10,16 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Search, Loader2, Trash2 } from "lucide-react";
+import { Plus, Loader2, Trash2 } from "lucide-react";
 import { format } from "date-fns";
+
+interface ReturnItem {
+  medicineId: number;
+  medicineName: string;
+  batchId: number | null;
+  quantity: number;
+  salePrice: number;
+}
 
 export default function SaleReturnsPage() {
   const { toast } = useToast();
@@ -18,21 +27,23 @@ export default function SaleReturnsPage() {
   const [showDialog, setShowDialog] = useState(false);
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
-  const [saleSearch, setSaleSearch] = useState("");
-  const [selectedSaleId, setSelectedSaleId] = useState<string>("");
+  const [selectedSaleId, setSelectedSaleId] = useState<string>("none");
   const [date, setDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [notes, setNotes] = useState("");
-  const [returnItems, setReturnItems] = useState<Array<{ medicineId: number; medicineName: string; batchId: number | null; quantity: number; salePrice: number }>>([]);
+  const [returnItems, setReturnItems] = useState<ReturnItem[]>([]);
 
   const { data: saleReturns = [], isLoading } = useListSaleReturns(
     { dateFrom: dateFrom || undefined, dateTo: dateTo || undefined }
   );
-  const { data: sales = [] } = useListSales(
-    saleSearch.length >= 3 ? {} : {}
-  );
-  const { data: saleDetail } = useGetSale(Number(selectedSaleId), {
-    query: { enabled: !!selectedSaleId && !isNaN(Number(selectedSaleId)) } as any,
-  });
+  const { data: sales = [] } = useListSales({});
+
+  const saleIdNum = Number(selectedSaleId);
+  const saleQueryOpts: UseQueryOptions<SaleWithItems, unknown, SaleWithItems> = {
+    queryKey: ["sale", saleIdNum],
+    enabled: selectedSaleId !== "none" && !isNaN(saleIdNum) && saleIdNum > 0,
+  };
+  const { data: saleDetail } = useGetSale(saleIdNum, { query: saleQueryOpts });
+
   const createReturn = useCreateSaleReturn();
 
   const handleSelectSale = (saleId: string) => {
@@ -40,12 +51,18 @@ export default function SaleReturnsPage() {
     setReturnItems([]);
   };
 
-  const addReturnItem = (item: any) => {
-    const exists = returnItems.find((r) => r.medicineId === item.medicineId && r.batchId === item.batchId);
+  const addReturnItem = (item: SaleItem) => {
+    const exists = returnItems.find((r) => r.medicineId === item.medicineId && r.batchId === (item.batchId ?? null));
     if (exists) return;
     setReturnItems((prev) => [
       ...prev,
-      { medicineId: item.medicineId, medicineName: item.medicineName, batchId: item.batchId ?? null, quantity: 1, salePrice: item.salePrice },
+      {
+        medicineId: item.medicineId,
+        medicineName: item.medicineName,
+        batchId: item.batchId ?? null,
+        quantity: 1,
+        salePrice: item.salePrice,
+      },
     ]);
   };
 
@@ -63,8 +80,8 @@ export default function SaleReturnsPage() {
       return;
     }
     const body: CreateSaleReturnBody = {
-      saleId: selectedSaleId ? Number(selectedSaleId) : null,
-      customerId: (saleDetail as any)?.customerId ?? null,
+      saleId: selectedSaleId !== "none" ? saleIdNum : null,
+      customerId: saleDetail?.customerId ?? null,
       date,
       notes: notes || null,
       items: returnItems.map((it): CreateSaleReturnItemBody => ({
@@ -79,7 +96,7 @@ export default function SaleReturnsPage() {
       toast({ title: "Sale return created" });
       setShowDialog(false);
       setReturnItems([]);
-      setSelectedSaleId("");
+      setSelectedSaleId("none");
       qc.invalidateQueries();
     } catch (err: unknown) {
       toast({ title: "Error", description: err instanceof Error ? err.message : "Request failed", variant: "destructive" });
@@ -119,10 +136,10 @@ export default function SaleReturnsPage() {
               <tbody>
                 {isLoading ? (
                   <tr><td colSpan={5} className="text-center py-8 text-muted-foreground">Loading...</td></tr>
-                ) : (saleReturns as any[]).length === 0 ? (
+                ) : saleReturns.length === 0 ? (
                   <tr><td colSpan={5} className="text-center py-8 text-muted-foreground">No sale returns found</td></tr>
                 ) : (
-                  (saleReturns as any[]).map((r) => (
+                  saleReturns.map((r) => (
                     <tr key={r.id} className="border-b last:border-0 hover:bg-muted/20">
                       <td className="px-4 py-3 font-medium">SR-{String(r.id).padStart(4, "0")}</td>
                       <td className="px-4 py-3">{r.date}</td>
@@ -154,8 +171,8 @@ export default function SaleReturnsPage() {
                     <SelectValue placeholder="Select original sale..." />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">— No original sale —</SelectItem>
-                    {(sales as any[]).slice(0, 50).map((s) => (
+                    <SelectItem value="none">— No original sale —</SelectItem>
+                    {sales.slice(0, 50).map((s) => (
                       <SelectItem key={s.id} value={String(s.id)}>
                         {s.invoiceNo} — {s.date} — PKR {s.totalAmount}
                       </SelectItem>
@@ -173,7 +190,7 @@ export default function SaleReturnsPage() {
               </div>
             </div>
 
-            {saleDetail && (saleDetail as any).items?.length > 0 && (
+            {saleDetail && saleDetail.items?.length > 0 && (
               <div>
                 <Label className="text-sm font-semibold">Original Sale Items (click to add to return)</Label>
                 <div className="mt-2 border rounded-lg overflow-hidden">
@@ -187,7 +204,7 @@ export default function SaleReturnsPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {(saleDetail as any).items.map((item: any) => (
+                      {saleDetail.items.map((item) => (
                         <tr key={item.id} className="border-b last:border-0 hover:bg-muted/20">
                           <td className="px-3 py-2">{item.medicineName}</td>
                           <td className="px-3 py-2 text-center">{item.quantity} {item.saleUnit}</td>

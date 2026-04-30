@@ -19,7 +19,8 @@ interface ReturnItem {
   medicineName: string;
   batchId: number | null;
   returnQuantity: number;
-  purchasePrice: number;
+  purchasePriceUnit: number;
+  conversionFactor: number;
 }
 
 export default function PurchaseReturnsPage() {
@@ -31,7 +32,7 @@ export default function PurchaseReturnsPage() {
   const [suppFilter, setSuppFilter] = useState("all");
 
   const [supplierId, setSupplierId] = useState<string>("none");
-  const [purchaseId, setPurchaseId] = useState<string>("");
+  const [purchaseId, setPurchaseId] = useState<string>("none");
   const [date, setDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [notes, setNotes] = useState("");
   const [inPacks, setInPacks] = useState(false);
@@ -46,10 +47,10 @@ export default function PurchaseReturnsPage() {
   const { data: purchaseReturns = [], isLoading } = useListPurchaseReturns(params);
   const { data: suppliers = [] } = useListSuppliers();
   const { data: purchases = [] } = useListPurchases({});
-  const purchaseIdNum = Number(purchaseId);
+  const purchaseIdNum = purchaseId !== "none" ? Number(purchaseId) : 0;
   const purchaseQueryOpts: UseQueryOptions<PurchaseWithItems, unknown, PurchaseWithItems> = {
     queryKey: ["purchase", purchaseIdNum],
-    enabled: !!purchaseId && !isNaN(purchaseIdNum) && purchaseIdNum > 0,
+    enabled: purchaseId !== "none" && !isNaN(purchaseIdNum) && purchaseIdNum > 0,
   };
   const { data: purchaseDetail } = useGetPurchase(purchaseIdNum, {
     query: purchaseQueryOpts,
@@ -59,12 +60,14 @@ export default function PurchaseReturnsPage() {
   const addItem = (item: PurchaseItem) => {
     const exists = returnItems.find((r) => r.medicineId === item.medicineId && r.batchId === (item.batchId ?? null));
     if (exists) return;
+    const cf = item.packsReceived > 0 ? Math.round(item.unitsReceived / item.packsReceived) || 1 : 1;
     setReturnItems((prev) => [...prev, {
       medicineId: item.medicineId,
       medicineName: item.medicineName,
       batchId: item.batchId ?? null,
-      returnQuantity: 1,
-      purchasePrice: item.purchasePrice,
+      returnQuantity: inPacks ? 1 : cf,
+      purchasePriceUnit: item.purchasePrice,
+      conversionFactor: cf,
     }]);
   };
 
@@ -74,7 +77,8 @@ export default function PurchaseReturnsPage() {
 
   const removeItem = (idx: number) => setReturnItems((prev) => prev.filter((_, i) => i !== idx));
 
-  const total = returnItems.reduce((acc, it) => acc + it.purchasePrice * it.returnQuantity, 0);
+  const getItemUnits = (it: ReturnItem) => inPacks ? it.returnQuantity * it.conversionFactor : it.returnQuantity;
+  const total = returnItems.reduce((acc, it) => acc + it.purchasePriceUnit * getItemUnits(it), 0);
 
   const handleCreate = async () => {
     if (returnItems.length === 0) {
@@ -85,12 +89,12 @@ export default function PurchaseReturnsPage() {
       supplierId: supplierId !== "none" ? Number(supplierId) : null,
       date,
       notes: notes || null,
-      inPacks,
+      inPacks: false,
       items: returnItems.map((it): CreatePurchaseReturnItemBody => ({
         medicineId: it.medicineId,
         batchId: it.batchId,
-        returnQuantity: it.returnQuantity,
-        purchasePrice: it.purchasePrice,
+        returnQuantity: getItemUnits(it),
+        purchasePrice: it.purchasePriceUnit,
       })),
     };
     try {
@@ -98,7 +102,7 @@ export default function PurchaseReturnsPage() {
       toast({ title: "Purchase return created" });
       setShowDialog(false);
       setReturnItems([]);
-      setPurchaseId("");
+      setPurchaseId("none");
       qc.invalidateQueries();
     } catch (err: unknown) {
       toast({ title: "Error", description: err instanceof Error ? err.message : "Request failed", variant: "destructive" });
@@ -189,7 +193,7 @@ export default function PurchaseReturnsPage() {
               <Select value={purchaseId} onValueChange={setPurchaseId}>
                 <SelectTrigger><SelectValue placeholder="Select GRN..." /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">— None —</SelectItem>
+                  <SelectItem value="none">— None —</SelectItem>
                   {purchases.slice(0, 50).map((p) => (
                     <SelectItem key={p.id} value={String(p.id)}>
                       {p.invoiceNo ?? `GRN-${p.id}`} — {p.date} — {p.supplierName}
@@ -246,7 +250,7 @@ export default function PurchaseReturnsPage() {
                   <thead className="border-b bg-muted/20">
                     <tr>
                       <th className="text-left px-3 py-2 text-muted-foreground">Medicine</th>
-                      <th className="text-center px-3 py-2 text-muted-foreground">Qty</th>
+                      <th className="text-center px-3 py-2 text-muted-foreground">Qty {inPacks ? "(packs)" : "(units)"}</th>
                       <th className="text-right px-3 py-2 text-muted-foreground">Total</th>
                       <th className="px-3 py-2" />
                     </tr>
@@ -258,7 +262,7 @@ export default function PurchaseReturnsPage() {
                         <td className="px-3 py-2 text-center">
                           <Input type="number" min={1} value={it.returnQuantity} onChange={(e) => updateQty(idx, Number(e.target.value))} className="h-6 text-xs w-16 text-center" />
                         </td>
-                        <td className="px-3 py-2 text-right font-medium">PKR {(Number(it.purchasePrice ?? 0) * it.returnQuantity).toFixed(2)}</td>
+                        <td className="px-3 py-2 text-right font-medium">PKR {(it.purchasePriceUnit * getItemUnits(it)).toFixed(2)}</td>
                         <td className="px-3 py-2">
                           <button onClick={() => removeItem(idx)} className="text-destructive hover:opacity-70"><Trash2 className="w-3 h-3" /></button>
                         </td>
