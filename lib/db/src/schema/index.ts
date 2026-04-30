@@ -12,7 +12,6 @@ import {
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
-// ─── Enums ────────────────────────────────────────────────────────────────────
 
 export const userRoleEnum = pgEnum("user_role", [
   "admin",
@@ -47,7 +46,6 @@ export const customerLedgerTypeEnum = pgEnum("customer_ledger_type", [
   "return",
 ]);
 
-// ─── Users ────────────────────────────────────────────────────────────────────
 
 export const usersTable = pgTable("users", {
   id: serial("id").primaryKey(),
@@ -66,7 +64,6 @@ export const insertUserSchema = createInsertSchema(usersTable).omit({
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof usersTable.$inferSelect;
 
-// ─── Categories ───────────────────────────────────────────────────────────────
 
 export const categoriesTable = pgTable("categories", {
   id: serial("id").primaryKey(),
@@ -82,7 +79,6 @@ export const insertCategorySchema = createInsertSchema(categoriesTable).omit({
 export type InsertCategory = z.infer<typeof insertCategorySchema>;
 export type Category = typeof categoriesTable.$inferSelect;
 
-// ─── Companies ────────────────────────────────────────────────────────────────
 
 export const companiesTable = pgTable("companies", {
   id: serial("id").primaryKey(),
@@ -98,7 +94,6 @@ export const insertCompanySchema = createInsertSchema(companiesTable).omit({
 export type InsertCompany = z.infer<typeof insertCompanySchema>;
 export type Company = typeof companiesTable.$inferSelect;
 
-// ─── Units ────────────────────────────────────────────────────────────────────
 
 export const unitsTable = pgTable("units", {
   id: serial("id").primaryKey(),
@@ -113,7 +108,6 @@ export const insertUnitSchema = createInsertSchema(unitsTable).omit({
 export type InsertUnit = z.infer<typeof insertUnitSchema>;
 export type Unit = typeof unitsTable.$inferSelect;
 
-// ─── Racks ────────────────────────────────────────────────────────────────────
 
 export const racksTable = pgTable("racks", {
   id: serial("id").primaryKey(),
@@ -129,7 +123,6 @@ export const insertRackSchema = createInsertSchema(racksTable).omit({
 export type InsertRack = z.infer<typeof insertRackSchema>;
 export type Rack = typeof racksTable.$inferSelect;
 
-// ─── Generic Names ────────────────────────────────────────────────────────────
 
 export const genericNamesTable = pgTable("generic_names", {
   id: serial("id").primaryKey(),
@@ -143,7 +136,6 @@ export const insertGenericNameSchema = createInsertSchema(
 export type InsertGenericName = z.infer<typeof insertGenericNameSchema>;
 export type GenericName = typeof genericNamesTable.$inferSelect;
 
-// ─── Medicines ────────────────────────────────────────────────────────────────
 
 export const medicinesTable = pgTable("medicines", {
   id: serial("id").primaryKey(),
@@ -187,7 +179,6 @@ export const insertMedicineSchema = createInsertSchema(medicinesTable).omit({
 export type InsertMedicine = z.infer<typeof insertMedicineSchema>;
 export type Medicine = typeof medicinesTable.$inferSelect;
 
-// ─── Batches ──────────────────────────────────────────────────────────────────
 
 export const batchesTable = pgTable("batches", {
   id: serial("id").primaryKey(),
@@ -213,7 +204,6 @@ export const insertBatchSchema = createInsertSchema(batchesTable).omit({
 export type InsertBatch = z.infer<typeof insertBatchSchema>;
 export type Batch = typeof batchesTable.$inferSelect;
 
-// ─── Suppliers ────────────────────────────────────────────────────────────────
 
 export const suppliersTable = pgTable("suppliers", {
   id: serial("id").primaryKey(),
@@ -235,7 +225,6 @@ export const insertSupplierSchema = createInsertSchema(suppliersTable).omit({
 export type InsertSupplier = z.infer<typeof insertSupplierSchema>;
 export type Supplier = typeof suppliersTable.$inferSelect;
 
-// ─── Supplier Ledger ──────────────────────────────────────────────────────────
 
 export const supplierLedgerTable = pgTable("supplier_ledger", {
   id: serial("id").primaryKey(),
@@ -253,7 +242,6 @@ export const supplierLedgerTable = pgTable("supplier_ledger", {
 
 export type SupplierLedgerEntry = typeof supplierLedgerTable.$inferSelect;
 
-// ─── Customers ────────────────────────────────────────────────────────────────
 
 export const customersTable = pgTable("customers", {
   id: serial("id").primaryKey(),
@@ -273,7 +261,6 @@ export const insertCustomerSchema = createInsertSchema(customersTable).omit({
 export type InsertCustomer = z.infer<typeof insertCustomerSchema>;
 export type Customer = typeof customersTable.$inferSelect;
 
-// ─── Customer Ledger ──────────────────────────────────────────────────────────
 
 export const customerLedgerTable = pgTable("customer_ledger", {
   id: serial("id").primaryKey(),
@@ -291,7 +278,6 @@ export const customerLedgerTable = pgTable("customer_ledger", {
 
 export type CustomerLedgerEntry = typeof customerLedgerTable.$inferSelect;
 
-// ─── Purchases ────────────────────────────────────────────────────────────────
 
 export const purchasesTable = pgTable("purchases", {
   id: serial("id").primaryKey(),
@@ -316,7 +302,6 @@ export const insertPurchaseSchema = createInsertSchema(purchasesTable).omit({
 export type InsertPurchase = z.infer<typeof insertPurchaseSchema>;
 export type Purchase = typeof purchasesTable.$inferSelect;
 
-// ─── Purchase Items ───────────────────────────────────────────────────────────
 
 export const purchaseItemsTable = pgTable("purchase_items", {
   id: serial("id").primaryKey(),
@@ -350,7 +335,6 @@ export const insertPurchaseItemSchema = createInsertSchema(
 export type InsertPurchaseItem = z.infer<typeof insertPurchaseItemSchema>;
 export type PurchaseItem = typeof purchaseItemsTable.$inferSelect;
 
-// ─── Purchase Returns ─────────────────────────────────────────────────────────
 
 export const purchaseReturnsTable = pgTable("purchase_returns", {
   id: serial("id").primaryKey(),
@@ -371,7 +355,6 @@ export const insertPurchaseReturnSchema = createInsertSchema(
 export type InsertPurchaseReturn = z.infer<typeof insertPurchaseReturnSchema>;
 export type PurchaseReturn = typeof purchaseReturnsTable.$inferSelect;
 
-// ─── Purchase Return Items ────────────────────────────────────────────────────
 
 export const purchaseReturnItemsTable = pgTable("purchase_return_items", {
   id: serial("id").primaryKey(),
@@ -396,7 +379,6 @@ export const purchaseReturnItemsTable = pgTable("purchase_return_items", {
 
 export type PurchaseReturnItem = typeof purchaseReturnItemsTable.$inferSelect;
 
-// ─── Sales ────────────────────────────────────────────────────────────────────
 
 export const salesTable = pgTable("sales", {
   id: serial("id").primaryKey(),
@@ -431,7 +413,6 @@ export const insertSaleSchema = createInsertSchema(salesTable).omit({
 export type InsertSale = z.infer<typeof insertSaleSchema>;
 export type Sale = typeof salesTable.$inferSelect;
 
-// ─── Prescriptions (for controlled drug sales) ────────────────────────────────
 
 export const prescriptionsTable = pgTable("prescriptions", {
   id: serial("id").primaryKey(),
@@ -452,7 +433,6 @@ export const insertPrescriptionSchema = createInsertSchema(
 export type InsertPrescription = z.infer<typeof insertPrescriptionSchema>;
 export type Prescription = typeof prescriptionsTable.$inferSelect;
 
-// ─── Sale Items ───────────────────────────────────────────────────────────────
 
 export const saleItemsTable = pgTable("sale_items", {
   id: serial("id").primaryKey(),
@@ -492,7 +472,6 @@ export const insertSaleItemSchema = createInsertSchema(saleItemsTable).omit({
 export type InsertSaleItem = z.infer<typeof insertSaleItemSchema>;
 export type SaleItem = typeof saleItemsTable.$inferSelect;
 
-// ─── Sale Returns ─────────────────────────────────────────────────────────────
 
 export const saleReturnsTable = pgTable("sale_returns", {
   id: serial("id").primaryKey(),
@@ -513,7 +492,6 @@ export const insertSaleReturnSchema = createInsertSchema(
 export type InsertSaleReturn = z.infer<typeof insertSaleReturnSchema>;
 export type SaleReturn = typeof saleReturnsTable.$inferSelect;
 
-// ─── Sale Return Items ────────────────────────────────────────────────────────
 
 export const saleReturnItemsTable = pgTable("sale_return_items", {
   id: serial("id").primaryKey(),
@@ -545,7 +523,6 @@ export const saleReturnItemsTable = pgTable("sale_return_items", {
 
 export type SaleReturnItem = typeof saleReturnItemsTable.$inferSelect;
 
-// ─── Missed Sales ─────────────────────────────────────────────────────────────
 
 export const missedSalesTable = pgTable("missed_sales", {
   id: serial("id").primaryKey(),
@@ -563,7 +540,6 @@ export const insertMissedSaleSchema = createInsertSchema(
 export type InsertMissedSale = z.infer<typeof insertMissedSaleSchema>;
 export type MissedSale = typeof missedSalesTable.$inferSelect;
 
-// ─── Deliveries ───────────────────────────────────────────────────────────────
 
 export const deliveriesTable = pgTable("deliveries", {
   id: serial("id").primaryKey(),
@@ -591,7 +567,6 @@ export const insertDeliverySchema = createInsertSchema(deliveriesTable).omit({
 export type InsertDelivery = z.infer<typeof insertDeliverySchema>;
 export type Delivery = typeof deliveriesTable.$inferSelect;
 
-// ─── Stock Audits ─────────────────────────────────────────────────────────────
 
 export const stockAuditsTable = pgTable("stock_audits", {
   id: serial("id").primaryKey(),
@@ -607,7 +582,6 @@ export const insertStockAuditSchema = createInsertSchema(
 export type InsertStockAudit = z.infer<typeof insertStockAuditSchema>;
 export type StockAudit = typeof stockAuditsTable.$inferSelect;
 
-// ─── Stock Audit Items ────────────────────────────────────────────────────────
 
 export const stockAuditItemsTable = pgTable("stock_audit_items", {
   id: serial("id").primaryKey(),
@@ -636,7 +610,6 @@ export const insertStockAuditItemSchema = createInsertSchema(
 export type InsertStockAuditItem = z.infer<typeof insertStockAuditItemSchema>;
 export type StockAuditItem = typeof stockAuditItemsTable.$inferSelect;
 
-// ─── Purchase Orders ──────────────────────────────────────────────────────────
 
 export const purchaseOrderStatusEnum = pgEnum("purchase_order_status", [
   "draft",
@@ -671,7 +644,6 @@ export const purchaseOrderItemsTable = pgTable("purchase_order_items", {
 export type PurchaseOrder = typeof purchaseOrdersTable.$inferSelect;
 export type PurchaseOrderItem = typeof purchaseOrderItemsTable.$inferSelect;
 
-// ─── Activity Log ─────────────────────────────────────────────────────────────
 
 export const activityLogsTable = pgTable("activity_logs", {
   id: serial("id").primaryKey(),
@@ -686,7 +658,6 @@ export const activityLogsTable = pgTable("activity_logs", {
 
 export type ActivityLog = typeof activityLogsTable.$inferSelect;
 
-// ─── Settings ─────────────────────────────────────────────────────────────────
 
 export const settingsTable = pgTable("settings", {
   id: serial("id").primaryKey(),

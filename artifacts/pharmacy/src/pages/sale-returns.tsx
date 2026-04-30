@@ -19,6 +19,8 @@ interface ReturnItem {
   batchId: number | null;
   quantity: number;
   salePrice: number;
+  saleUnit: string;
+  conversionFactor: number;
 }
 
 export default function SaleReturnsPage() {
@@ -62,6 +64,8 @@ export default function SaleReturnsPage() {
         batchId: item.batchId ?? null,
         quantity: 1,
         salePrice: item.salePrice,
+        saleUnit: item.saleUnit ?? "unit",
+        conversionFactor: item.unitQuantity ?? 1,
       },
     ]);
   };
@@ -84,12 +88,14 @@ export default function SaleReturnsPage() {
       customerId: saleDetail?.customerId ?? null,
       date,
       notes: notes || null,
-      items: returnItems.map((it): CreateSaleReturnItemBody => ({
+      items: returnItems.map((it) => ({
         medicineId: it.medicineId,
         batchId: it.batchId,
         quantity: it.quantity,
         salePrice: it.salePrice,
-      })),
+        saleUnit: it.saleUnit,
+        conversionFactor: it.conversionFactor,
+      })) as CreateSaleReturnItemBody[],
     };
     try {
       await createReturn.mutateAsync({ data: body });

@@ -399,22 +399,41 @@ router.get("/sales/:id", requireAuth, async (req, res) => {
     return;
   }
 
-  const items = await db
+  const rawItems = await db
     .select({
       id: saleItemsTable.id,
       medicineId: saleItemsTable.medicineId,
       medicineName: medicinesTable.name,
       batchId: saleItemsTable.batchId,
       batchNo: saleItemsTable.batchNo,
-      quantity: saleItemsTable.quantityUnits,
       saleUnit: saleItemsTable.saleUnit,
-      salePrice: saleItemsTable.salePriceUnit,
+      quantityPacks: saleItemsTable.quantityPacks,
+      quantityUnits: saleItemsTable.quantityUnits,
+      conversionFactor: saleItemsTable.conversionFactor,
+      salePricePack: saleItemsTable.salePricePack,
+      salePriceUnit: saleItemsTable.salePriceUnit,
       discountPercent: saleItemsTable.discountPct,
       totalAmount: saleItemsTable.totalAmount,
+      isControlled: medicinesTable.isControlled,
     })
     .from(saleItemsTable)
     .leftJoin(medicinesTable, eq(saleItemsTable.medicineId, medicinesTable.id))
     .where(eq(saleItemsTable.saleId, id));
+
+  const items = rawItems.map((r) => ({
+    id: r.id,
+    medicineId: r.medicineId,
+    medicineName: r.medicineName,
+    batchId: r.batchId,
+    batchNo: r.batchNo,
+    saleUnit: r.saleUnit,
+    quantity: r.saleUnit === "pack" ? Number(r.quantityPacks) : r.quantityUnits,
+    unitQuantity: r.conversionFactor,
+    salePrice: r.saleUnit === "pack" ? Number(r.salePricePack) : Number(r.salePriceUnit),
+    discountPercent: Number(r.discountPercent),
+    totalAmount: Number(r.totalAmount),
+    isControlled: r.isControlled ?? false,
+  }));
 
   res.json({ ...sale, items });
 });

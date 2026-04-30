@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { eq, gte, lte, and, sql, desc } from "drizzle-orm";
 import { db } from "../lib/db.js";
-import { requireAuth } from "../middlewares/auth.js";
+import { requireAuth, requireManager } from "../middlewares/auth.js";
 import {
   salesTable,
   saleItemsTable,
@@ -121,7 +121,7 @@ router.get("/reports/stock", requireAuth, async (req, res) => {
 });
 
 
-router.get("/reports/purchase", requireAuth, async (req, res) => {
+router.get("/reports/purchase", requireAuth, requireManager, async (req, res) => {
   const { startDate, endDate } = dateRange(req.query as Record<string, string | undefined>);
   const { supplierId } = req.query as { supplierId?: string };
 
@@ -157,7 +157,7 @@ router.get("/reports/purchase", requireAuth, async (req, res) => {
 });
 
 // Legacy plural path — redirect to singular
-router.get("/reports/purchases", requireAuth, (req, res) => {
+router.get("/reports/purchases", requireAuth, requireManager, (req, res) => {
   const qs = new URLSearchParams(req.query as Record<string, string>).toString();
   res.redirect(307, `/api/reports/purchase${qs ? `?${qs}` : ""}`);
 });
@@ -209,7 +209,7 @@ router.get("/reports/expiry", requireAuth, async (req, res) => {
 });
 
 
-router.get("/reports/controlled-drugs", requireAuth, async (req, res) => {
+router.get("/reports/controlled-drugs", requireAuth, requireManager, async (req, res) => {
   const { startDate, endDate } = dateRange(req.query as Record<string, string | undefined>);
   const conditions = [eq(medicinesTable.isControlled, true)];
   if (startDate) conditions.push(gte(salesTable.date, startDate));
@@ -247,7 +247,7 @@ router.get("/reports/controlled-drugs", requireAuth, async (req, res) => {
   })));
 });
 
-router.get("/reports/profit-loss", requireAuth, async (req, res) => {
+router.get("/reports/profit-loss", requireAuth, requireManager, async (req, res) => {
   const { startDate, endDate } = dateRange(req.query as Record<string, string | undefined>);
 
   const saleConditions = [];
