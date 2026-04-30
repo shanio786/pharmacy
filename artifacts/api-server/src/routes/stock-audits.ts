@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, sum } from "drizzle-orm";
 import { db } from "../lib/db.js";
 import { requireAuth, requireManager } from "../middlewares/auth.js";
 import {
@@ -34,75 +34,85 @@ router.post("/stock-audits", requireAuth, requireManager, async (req, res) => {
     }>;
   };
 
-  const [audit] = await db
-    .insert(stockAuditsTable)
-    .values({
-      date: date ?? new Date().toISOString().slice(0, 10),
-      notes,
-      conductedBy: req.user?.userId,
-    })
-    .returning();
-
-  const auditItems = [];
-  for (const item of items) {
-    const [med] = await db
-      .select({ unitsPerPack: medicinesTable.unitsPerPack })
-      .from(medicinesTable)
-      .where(eq(medicinesTable.id, item.medicineId))
-      .limit(1);
-    const cf = Number(med?.unitsPerPack ?? 1);
-
-    let systemCountUnits = 0;
-    if (item.batchId) {
-      const [batch] = await db
-        .select()
-        .from(batchesTable)
-        .where(eq(batchesTable.id, item.batchId))
-        .limit(1);
-      systemCountUnits = batch?.quantityUnits ?? 0;
-    }
-
-    const packs = item.physicalCountPacks ?? item.physicalPacks ?? 0;
-    const units = item.physicalCountUnits ?? item.physicalUnits ?? 0;
-    const physicalTotalUnits = Math.round(packs * cf) + units;
-    const variance = physicalTotalUnits - systemCountUnits;
-
-    const [auditItem] = await db
-      .insert(stockAuditItemsTable)
+  const result = await db.transaction(async (tx) => {
+    const [audit] = await tx
+      .insert(stockAuditsTable)
       .values({
-        auditId: audit.id,
-        medicineId: item.medicineId,
-        batchId: item.batchId,
-        conversionFactor: cf,
-        systemCountUnits,
-        physicalCountPacks: String(packs),
-        physicalCountUnits: units,
-        physicalTotalUnits,
-        variance,
+        date: date ?? new Date().toISOString().slice(0, 10),
+        notes,
+        conductedBy: req.user?.userId,
       })
       .returning();
 
-    auditItems.push(auditItem);
-
-    if (item.batchId && variance !== 0) {
-      const [batch] = await db
-        .select()
-        .from(batchesTable)
-        .where(eq(batchesTable.id, item.batchId))
+    const auditItems = [];
+    for (const item of items) {
+      const [med] = await tx
+        .select({ unitsPerPack: medicinesTable.unitsPerPack })
+        .from(medicinesTable)
+        .where(eq(medicinesTable.id, item.medicineId))
         .limit(1);
-      if (batch) {
-        await db
-          .update(batchesTable)
-          .set({ quantityUnits: Math.max(0, batch.quantityUnits + variance) })
-          .where(eq(batchesTable.id, item.batchId));
+      const cf = Number(med?.unitsPerPack ?? 1);
+
+      let systemCountUnits = 0;
+      if (item.batchId) {
+        const [batch] = await tx
+          .select({ quantityUnits: batchesTable.quantityUnits })
+          .from(batchesTable)
+          .where(eq(batchesTable.id, item.batchId))
+          .limit(1);
+        systemCountUnits = batch?.quantityUnits ?? 0;
+      } else {
+        const [agg] = await tx
+          .select({ total: sum(batchesTable.quantityUnits) })
+          .from(batchesTable)
+          .where(eq(batchesTable.medicineId, item.medicineId));
+        systemCountUnits = Number(agg?.total ?? 0);
+      }
+
+      const packs = item.physicalCountPacks ?? item.physicalPacks ?? 0;
+      const units = item.physicalCountUnits ?? item.physicalUnits ?? 0;
+      const physicalTotalUnits = Math.round(packs * cf) + units;
+      const variance = physicalTotalUnits - systemCountUnits;
+
+      const [auditItem] = await tx
+        .insert(stockAuditItemsTable)
+        .values({
+          auditId: audit.id,
+          medicineId: item.medicineId,
+          batchId: item.batchId,
+          conversionFactor: cf,
+          systemCountUnits,
+          physicalCountPacks: String(packs),
+          physicalCountUnits: units,
+          physicalTotalUnits,
+          variance,
+        })
+        .returning();
+
+      auditItems.push(auditItem);
+
+      if (item.batchId && variance !== 0) {
+        const [batch] = await tx
+          .select({ quantityUnits: batchesTable.quantityUnits })
+          .from(batchesTable)
+          .where(eq(batchesTable.id, item.batchId))
+          .limit(1);
+        if (batch) {
+          await tx
+            .update(batchesTable)
+            .set({ quantityUnits: Math.max(0, batch.quantityUnits + variance) })
+            .where(eq(batchesTable.id, item.batchId));
+        }
       }
     }
-  }
 
-  await logActivity(req.user?.userId, "stock_audit_created", "stock_audit", audit.id,
-    JSON.stringify({ date: audit.date, itemCount: auditItems.length }));
+    return { audit, auditItems };
+  });
 
-  res.status(201).json({ ...audit, items: auditItems });
+  await logActivity(req.user?.userId, "stock_audit_created", "stock_audit", result.audit.id,
+    JSON.stringify({ date: result.audit.date, itemCount: result.auditItems.length }));
+
+  res.status(201).json({ ...result.audit, items: result.auditItems });
 });
 
 router.get("/stock-audits/:id", requireAuth, async (req, res) => {

@@ -102,12 +102,18 @@ router.post("/purchase-returns", requireAuth, requireManager, async (req, res) =
           .from(batchesTable)
           .where(eq(batchesTable.id, item.batchId))
           .limit(1);
-        if (batch) {
-          await tx
-            .update(batchesTable)
-            .set({ quantityUnits: Math.max(0, batch.quantityUnits - item.quantityUnits) })
-            .where(eq(batchesTable.id, item.batchId));
+        if (!batch) {
+          throw Object.assign(new Error(`Batch not found for item medicineId=${item.medicineId}`), { status: 400 });
         }
+        if (item.quantityUnits > batch.quantityUnits) {
+          throw Object.assign(new Error(
+            `Return quantity (${item.quantityUnits} units) exceeds batch stock (${batch.quantityUnits} units) for medicineId=${item.medicineId}`
+          ), { status: 400 });
+        }
+        await tx
+          .update(batchesTable)
+          .set({ quantityUnits: batch.quantityUnits - item.quantityUnits })
+          .where(eq(batchesTable.id, item.batchId));
       }
     }
 

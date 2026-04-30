@@ -9,7 +9,12 @@ async function seed() {
   // 1. Admin user
   const existingUsers = await db.select().from(schema.usersTable).limit(1);
   if (!existingUsers.length) {
-    const passwordHash = await bcrypt.hash("admin123", 10);
+    const adminPassword = process.env["ADMIN_PASSWORD"] ?? "admin123";
+    const managerPassword = process.env["MANAGER_PASSWORD"] ?? "manager123";
+    if (!process.env["ADMIN_PASSWORD"]) {
+      console.warn("WARNING: ADMIN_PASSWORD env var not set. Using default password 'admin123'. Change it immediately after first login in production.");
+    }
+    const passwordHash = await bcrypt.hash(adminPassword, 10);
     await db.insert(schema.usersTable).values({
       username: "admin",
       passwordHash,
@@ -17,7 +22,7 @@ async function seed() {
       role: "admin",
       isActive: true,
     });
-    const mgrHash = await bcrypt.hash("manager123", 10);
+    const mgrHash = await bcrypt.hash(managerPassword, 10);
     await db.insert(schema.usersTable).values({
       username: "manager",
       passwordHash: mgrHash,
@@ -25,7 +30,7 @@ async function seed() {
       role: "manager",
       isActive: true,
     });
-    console.log("Created admin user (admin/admin123) and manager (manager/manager123)");
+    console.log(`Created admin user (admin/${process.env["ADMIN_PASSWORD"] ? "***" : "admin123"}) and manager`);
   }
 
   // 2. Settings

@@ -80,6 +80,7 @@ router.post("/purchases", requireAuth, requireManager, async (req, res) => {
         .limit(1);
       const cf = Number(med?.unitsPerPack ?? 1);
       const quantityUnits = item.packsReceived * cf;
+      const purchasePriceUnit = cf > 0 ? item.purchasePrice / cf : item.purchasePrice;
       const itemTotal = item.packsReceived * item.purchasePrice;
       totalAmount += itemTotal;
       return {
@@ -87,7 +88,7 @@ router.post("/purchases", requireAuth, requireManager, async (req, res) => {
         quantityPacks: item.packsReceived,
         quantityUnits,
         conversionFactor: cf,
-        purchasePriceUnit: item.purchasePrice,
+        purchasePriceUnit,
         salePriceUnit: item.salePrice,
         salePricePackCalc: item.salePrice * cf,
         totalAmount: String(itemTotal),

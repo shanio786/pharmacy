@@ -269,7 +269,7 @@ export default function PurchasesPage() {
                     <th className="text-left px-2 py-2 font-medium text-muted-foreground">Batch# *</th>
                     <th className="text-left px-2 py-2 font-medium text-muted-foreground">Expiry *</th>
                     <th className="text-center px-2 py-2 font-medium text-muted-foreground">Packs</th>
-                    <th className="text-right px-2 py-2 font-medium text-muted-foreground">Buy Price</th>
+                    <th className="text-right px-2 py-2 font-medium text-muted-foreground">Buy Price/Pack</th>
                     <th className="text-right px-2 py-2 font-medium text-muted-foreground">Sale Price</th>
                     <th className="text-right px-2 py-2 font-medium text-muted-foreground">Total</th>
                     <th className="px-2 py-2" />
