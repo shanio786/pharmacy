@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { eq, desc, and, gte, lte } from "drizzle-orm";
+import { eq, desc, and, gte, lte, sql } from "drizzle-orm";
 import { db } from "../lib/db.js";
 import { requireAuth, requireManager } from "../middlewares/auth.js";
 import {
@@ -121,18 +121,55 @@ router.post("/sale-returns", requireAuth, requireManager, async (req, res) => {
     );
 
     for (const item of normalizedItems) {
-      if (item.batchId) {
-        const [batch] = await tx
+      let restoreBatchId = item.batchId;
+      // Fallback: when no batchId was provided (manual return without
+      // original-sale link), restore stock to the most recently received
+      // non-expired batch for this medicine, or create a synthetic
+      // "RETURN-<date>" batch if none exists.
+      if (!restoreBatchId) {
+        const today = new Date().toISOString().slice(0, 10);
+        const [latest] = await tx
           .select()
           .from(batchesTable)
-          .where(eq(batchesTable.id, item.batchId))
+          .where(
+            and(
+              eq(batchesTable.medicineId, item.medicineId),
+              gte(batchesTable.expiryDate, today),
+            ),
+          )
+          .orderBy(desc(batchesTable.createdAt))
           .limit(1);
-        if (batch) {
-          await tx
-            .update(batchesTable)
-            .set({ quantityUnits: batch.quantityUnits + item.quantityUnits })
-            .where(eq(batchesTable.id, item.batchId));
+        if (latest) {
+          restoreBatchId = latest.id;
+        } else {
+          const expiryStr = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)
+            .toISOString()
+            .slice(0, 10);
+          const [synthetic] = await tx
+            .insert(batchesTable)
+            .values({
+              medicineId: item.medicineId,
+              batchNo: item.batchNo ?? `RETURN-${date}`,
+              expiryDate: expiryStr,
+              quantityUnits: 0,
+              purchasePrice: String(item.salePriceUnit),
+              salePrice: String(item.salePriceUnit),
+            })
+            .returning();
+          restoreBatchId = synthetic.id;
         }
+      }
+
+      const [batch] = await tx
+        .select()
+        .from(batchesTable)
+        .where(eq(batchesTable.id, restoreBatchId))
+        .limit(1);
+      if (batch) {
+        await tx
+          .update(batchesTable)
+          .set({ quantityUnits: batch.quantityUnits + item.quantityUnits })
+          .where(eq(batchesTable.id, restoreBatchId));
       }
     }
 

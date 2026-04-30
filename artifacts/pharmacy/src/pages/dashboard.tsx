@@ -3,7 +3,7 @@ import type { SalesChartPoint, ExpiringBatch, MedicineWithStock } from "@workspa
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-import { ShoppingCart, PackagePlus, Pill, AlertTriangle, Clock, TrendingUp } from "lucide-react";
+import { ShoppingCart, PackagePlus, Pill, AlertTriangle, Clock, TrendingUp, Truck, AlertOctagon, Wallet, Users } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 function KpiCard({
@@ -58,13 +58,20 @@ export default function DashboardPage() {
         <p className="text-sm text-muted-foreground">Overview of pharmacy activity</p>
       </div>
 
-      {/* KPI Cards */}
+      {/* KPI Cards (Row 1: Financial / Activity) */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
         <KpiCard
           title="Today's Sales"
           value={isLoading ? "..." : formatCurrency(Number(summary?.todaySales ?? 0))}
           icon={ShoppingCart}
           color="bg-green-500"
+          isLoading={isLoading}
+        />
+        <KpiCard
+          title="Today's Invoices"
+          value={isLoading ? "..." : String(summary?.todaySalesCount ?? 0)}
+          icon={Wallet}
+          color="bg-emerald-600"
           isLoading={isLoading}
         />
         <KpiCard
@@ -75,12 +82,23 @@ export default function DashboardPage() {
           isLoading={isLoading}
         />
         <KpiCard
+          title="Month's Sales"
+          value={isLoading ? "..." : formatCurrency(Number(summary?.monthSales ?? 0))}
+          icon={TrendingUp}
+          color="bg-teal-600"
+          isLoading={isLoading}
+        />
+        <KpiCard
           title="Total Medicines"
           value={isLoading ? "..." : String(summary?.totalMedicines ?? 0)}
           icon={Pill}
           color="bg-purple-500"
           isLoading={isLoading}
         />
+      </div>
+
+      {/* KPI Cards (Row 2: Operations / Alerts) */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
         <KpiCard
           title="Low Stock Items"
           value={isLoading ? "..." : String(summary?.lowStockCount ?? 0)}
@@ -93,6 +111,27 @@ export default function DashboardPage() {
           value={isLoading ? "..." : String(summary?.expiringCount ?? 0)}
           icon={Clock}
           color="bg-red-500"
+          isLoading={isLoading}
+        />
+        <KpiCard
+          title="Missed Sales (Today)"
+          value={isLoading ? "..." : String(summary?.missedSalesToday ?? 0)}
+          icon={AlertOctagon}
+          color="bg-rose-600"
+          isLoading={isLoading}
+        />
+        <KpiCard
+          title="Pending Deliveries"
+          value={isLoading ? "..." : String(summary?.pendingDeliveries ?? 0)}
+          icon={Truck}
+          color="bg-amber-600"
+          isLoading={isLoading}
+        />
+        <KpiCard
+          title="Customers / Suppliers"
+          value={isLoading ? "..." : `${summary?.totalCustomers ?? 0} / ${summary?.totalSuppliers ?? 0}`}
+          icon={Users}
+          color="bg-slate-600"
           isLoading={isLoading}
         />
       </div>

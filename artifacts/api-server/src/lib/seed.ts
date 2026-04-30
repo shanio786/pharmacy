@@ -211,7 +211,18 @@ async function seed() {
   const coId = (name: string) => cos.find((c) => c.name.startsWith(name))?.id;
   const unitId = (name: string) => units.find((u) => u.name.startsWith(name))?.id;
   const rackId = (name: string) => racks.find((r) => r.name === name)?.id;
-  const gnId = (name: string) => gns.find((g) => g.name === name)?.id;
+  const gnId = (name: string) => {
+    const needle = name.toLowerCase().trim();
+    // Try exact (case-insensitive) match first, then startsWith, then contains
+    const exact = gns.find((g) => g.name.toLowerCase() === needle);
+    if (exact) return exact.id;
+    const starts = gns.find((g) => g.name.toLowerCase().startsWith(needle));
+    if (starts) return starts.id;
+    const contains = gns.find((g) => g.name.toLowerCase().includes(needle));
+    if (contains) return contains.id;
+    console.warn(`[seed] gnId: no generic name match for "${name}" — medicine will have NULL genericNameId`);
+    return undefined;
+  };
 
   // Medicines (100+)
   const existingMeds = await db.select().from(schema.medicinesTable).limit(1);

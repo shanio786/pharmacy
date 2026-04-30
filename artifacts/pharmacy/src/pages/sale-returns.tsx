@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { useListSaleReturns, useCreateSaleReturn, useGetSale, useListSales } from "@workspace/api-client-react";
-import type { CreateSaleReturnBody, CreateSaleReturnItemBody, SaleWithItems, SaleItem } from "@workspace/api-client-react";
+import { useListSaleReturns, useCreateSaleReturn, useGetSale, useListSales, useListMedicines } from "@workspace/api-client-react";
+import type { CreateSaleReturnBody, CreateSaleReturnItemBody, SaleWithItems, SaleItem, MedicineWithStock } from "@workspace/api-client-react";
 import type { UseQueryOptions } from "@tanstack/react-query";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -38,6 +38,8 @@ export default function SaleReturnsPage() {
     { dateFrom: dateFrom || undefined, dateTo: dateTo || undefined }
   );
   const { data: sales = [] } = useListSales({});
+  const [medicineSearch, setMedicineSearch] = useState("");
+  const { data: medicineMatches = [] } = useListMedicines({ search: medicineSearch || undefined });
 
   const saleIdNum = Number(selectedSaleId);
   const saleQueryOpts: UseQueryOptions<SaleWithItems, unknown, SaleWithItems> = {
@@ -195,6 +197,53 @@ export default function SaleReturnsPage() {
                 <Input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Reason for return..." />
               </div>
             </div>
+
+            {selectedSaleId === "none" && (
+              <div>
+                <Label className="text-sm font-semibold">Add Medicine Manually</Label>
+                <Input
+                  placeholder="Search medicine by name..."
+                  value={medicineSearch}
+                  onChange={(e) => setMedicineSearch(e.target.value)}
+                  className="mt-2"
+                  data-testid="input-manual-medicine-search"
+                />
+                {medicineSearch && (
+                  <div className="mt-2 border rounded-lg max-h-48 overflow-y-auto">
+                    {(medicineMatches as MedicineWithStock[]).slice(0, 10).map((m) => (
+                      <button
+                        key={m.id}
+                        type="button"
+                        onClick={() => {
+                          if (returnItems.find((r) => r.medicineId === m.id && r.batchId === null)) return;
+                          setReturnItems((prev) => [
+                            ...prev,
+                            {
+                              medicineId: m.id,
+                              medicineName: m.name,
+                              batchId: null,
+                              quantity: 1,
+                              salePrice: Number(m.salePrice ?? 0),
+                              saleUnit: "unit",
+                              conversionFactor: m.conversionFactor ?? 1,
+                            },
+                          ]);
+                          setMedicineSearch("");
+                        }}
+                        data-testid={`button-add-manual-medicine-${m.id}`}
+                        className="block w-full text-left px-3 py-2 text-xs hover:bg-muted/40 border-b last:border-0"
+                      >
+                        <span className="font-medium">{m.name}</span>
+                        <span className="text-muted-foreground ml-2">PKR {m.salePrice}</span>
+                      </button>
+                    ))}
+                    {(medicineMatches as MedicineWithStock[]).length === 0 && (
+                      <div className="px-3 py-2 text-xs text-muted-foreground">No medicines match</div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
 
             {saleDetail && saleDetail.items?.length > 0 && (
               <div>
