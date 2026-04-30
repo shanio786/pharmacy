@@ -70,7 +70,26 @@ router.post("/purchases", requireAuth, requireManager, async (req, res) => {
     return;
   }
 
+  const isoDate = /^\d{4}-\d{2}-\d{2}$/;
   for (const it of items) {
+    if (!Number.isFinite(it.medicineId) || it.medicineId <= 0) {
+      res.status(400).json({ error: "Each item must reference a valid medicineId" });
+      return;
+    }
+    if (typeof it.batchNo !== "string" || it.batchNo.trim() === "") {
+      res.status(400).json({ error: "Each item batchNo is required" });
+      return;
+    }
+    if (typeof it.expiryDate !== "string" || !isoDate.test(it.expiryDate)) {
+      res
+        .status(400)
+        .json({ error: "Each item expiryDate must be YYYY-MM-DD" });
+      return;
+    }
+    if (Number.isNaN(new Date(it.expiryDate).getTime())) {
+      res.status(400).json({ error: "Each item expiryDate is not a valid date" });
+      return;
+    }
     if (!Number.isFinite(it.packsReceived) || it.packsReceived <= 0) {
       res.status(400).json({ error: "Each item packsReceived must be a positive number" });
       return;
