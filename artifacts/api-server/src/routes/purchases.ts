@@ -58,11 +58,9 @@ router.post("/purchases", requireAuth, async (req, res) => {
       medicineId: number;
       batchNo: string;
       expiryDate: string;
-      quantityPacks: number;
-      bonusPacks: number;
-      quantityUnits: number;
-      purchasePriceUnit: number;
-      salePriceUnit: number;
+      packsReceived: number;
+      purchasePrice: number;
+      salePrice: number;
     }>;
   };
 
@@ -72,16 +70,27 @@ router.post("/purchases", requireAuth, async (req, res) => {
   }
 
   let totalAmount = 0;
-  const itemsToInsert = items.map((item) => {
-    const itemTotal = item.quantityUnits * item.purchasePriceUnit;
-    totalAmount += itemTotal;
-    return {
-      ...item,
-      totalAmount: String(itemTotal),
-      purchasePriceUnit: String(item.purchasePriceUnit),
-      salePriceUnit: String(item.salePriceUnit),
-    };
-  });
+  const enrichedItems = await Promise.all(
+    items.map(async (item) => {
+      const [med] = await db
+        .select({ unitsPerPack: medicinesTable.unitsPerPack })
+        .from(medicinesTable)
+        .where(eq(medicinesTable.id, item.medicineId))
+        .limit(1);
+      const cf = Number(med?.unitsPerPack ?? 1);
+      const quantityUnits = item.packsReceived * cf;
+      const itemTotal = item.packsReceived * item.purchasePrice;
+      totalAmount += itemTotal;
+      return {
+        ...item,
+        quantityPacks: item.packsReceived,
+        quantityUnits,
+        purchasePriceUnit: item.purchasePrice,
+        salePriceUnit: item.salePrice,
+        totalAmount: String(itemTotal),
+      };
+    })
+  );
 
   const paid = paidAmount ?? totalAmount;
   const status = paid >= totalAmount ? "received" : paid > 0 ? "partial" : "pending";
@@ -100,10 +109,20 @@ router.post("/purchases", requireAuth, async (req, res) => {
     .returning();
 
   await db.insert(purchaseItemsTable).values(
-    itemsToInsert.map((item) => ({ ...item, purchaseId: purchase.id }))
+    enrichedItems.map((item) => ({
+      purchaseId: purchase.id,
+      medicineId: item.medicineId,
+      batchNo: item.batchNo,
+      expiryDate: item.expiryDate,
+      quantityPacks: item.quantityPacks,
+      quantityUnits: item.quantityUnits,
+      purchasePriceUnit: String(item.purchasePriceUnit),
+      salePriceUnit: String(item.salePriceUnit),
+      totalAmount: item.totalAmount,
+    }))
   );
 
-  for (const item of items) {
+  for (const item of enrichedItems) {
     const existing = await db
       .select()
       .from(batchesTable)
@@ -163,7 +182,7 @@ router.post("/purchases", requireAuth, async (req, res) => {
     }
   }
 
-  res.status(201).json({ ...purchase, items: itemsToInsert });
+  res.status(201).json({ ...purchase, items: enrichedItems });
 });
 
 router.get("/purchases/:id", requireAuth, async (req, res) => {
@@ -198,11 +217,10 @@ router.get("/purchases/:id", requireAuth, async (req, res) => {
       medicineName: medicinesTable.name,
       batchNo: purchaseItemsTable.batchNo,
       expiryDate: purchaseItemsTable.expiryDate,
-      quantityPacks: purchaseItemsTable.quantityPacks,
-      bonusPacks: purchaseItemsTable.bonusPacks,
+      packsReceived: purchaseItemsTable.quantityPacks,
       quantityUnits: purchaseItemsTable.quantityUnits,
-      purchasePriceUnit: purchaseItemsTable.purchasePriceUnit,
-      salePriceUnit: purchaseItemsTable.salePriceUnit,
+      purchasePrice: purchaseItemsTable.purchasePriceUnit,
+      salePrice: purchaseItemsTable.salePriceUnit,
       totalAmount: purchaseItemsTable.totalAmount,
     })
     .from(purchaseItemsTable)
@@ -213,7 +231,11 @@ router.get("/purchases/:id", requireAuth, async (req, res) => {
 });
 
 router.post("/purchases/generate-sale-based-po", requireAuth, async (req, res) => {
-  const { from, to } = req.body as { from: string; to: string };
+  const { dateFrom, dateTo, supplierId } = req.body as {
+    dateFrom: string;
+    dateTo: string;
+    supplierId?: number;
+  };
   const rows = await db
     .select({
       medicineId: saleItemsTable.medicineId,
@@ -224,7 +246,7 @@ router.post("/purchases/generate-sale-based-po", requireAuth, async (req, res) =
     .from(saleItemsTable)
     .innerJoin(salesTable, eq(saleItemsTable.saleId, salesTable.id))
     .innerJoin(medicinesTable, eq(saleItemsTable.medicineId, medicinesTable.id))
-    .where(and(gte(salesTable.date, from), lte(salesTable.date, to)))
+    .where(and(gte(salesTable.date, dateFrom), lte(salesTable.date, dateTo)))
     .groupBy(saleItemsTable.medicineId, medicinesTable.name);
 
   const poItems = rows.map((r) => ({

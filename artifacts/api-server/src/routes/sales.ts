@@ -80,9 +80,11 @@ router.post("/sales", requireAuth, async (req, res) => {
       medicineId: number;
       batchId?: number;
       batchNo?: string;
-      quantityUnits: number;
-      salePriceUnit: number;
-      discountPct?: number;
+      saleUnit?: string;
+      quantity: number;
+      salePrice: number;
+      discountPercent?: number;
+      prescriptionNote?: string;
     }>;
   };
 
@@ -93,8 +95,8 @@ router.post("/sales", requireAuth, async (req, res) => {
 
   let subtotal = 0;
   const itemsWithTotals = items.map((item) => {
-    const gross = item.quantityUnits * item.salePriceUnit;
-    const discount = ((item.discountPct ?? 0) / 100) * gross;
+    const gross = item.quantity * item.salePrice;
+    const discount = ((item.discountPercent ?? 0) / 100) * gross;
     const total = gross - discount;
     subtotal += total;
     return { ...item, total };
@@ -131,9 +133,9 @@ router.post("/sales", requireAuth, async (req, res) => {
       medicineId: item.medicineId,
       batchId: item.batchId,
       batchNo: item.batchNo,
-      quantityUnits: item.quantityUnits,
-      salePriceUnit: String(item.salePriceUnit),
-      discountPct: String(item.discountPct ?? 0),
+      quantityUnits: item.quantity,
+      salePriceUnit: String(item.salePrice),
+      discountPct: String(item.discountPercent ?? 0),
       totalAmount: String(item.total),
     }))
   );
@@ -146,9 +148,10 @@ router.post("/sales", requireAuth, async (req, res) => {
         .where(eq(batchesTable.id, item.batchId))
         .limit(1);
       if (batch) {
+        const newQty = Math.max(0, batch.quantityUnits - item.quantity);
         await db
           .update(batchesTable)
-          .set({ quantityUnits: Math.max(0, batch.quantityUnits - item.quantityUnits) })
+          .set({ quantityUnits: newQty })
           .where(eq(batchesTable.id, item.batchId));
       }
     }
@@ -218,9 +221,9 @@ router.get("/sales/:id", requireAuth, async (req, res) => {
       medicineName: medicinesTable.name,
       batchId: saleItemsTable.batchId,
       batchNo: saleItemsTable.batchNo,
-      quantityUnits: saleItemsTable.quantityUnits,
-      salePriceUnit: saleItemsTable.salePriceUnit,
-      discountPct: saleItemsTable.discountPct,
+      quantity: saleItemsTable.quantityUnits,
+      salePrice: saleItemsTable.salePriceUnit,
+      discountPercent: saleItemsTable.discountPct,
       totalAmount: saleItemsTable.totalAmount,
     })
     .from(saleItemsTable)
