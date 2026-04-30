@@ -70,6 +70,19 @@ router.post("/sale-returns", requireAuth, requireManager, async (req, res) => {
     res.status(400).json({ error: "items are required" });
     return;
   }
+  // Manual returns (any item without batchId) bypass the original batch
+  // and may need to create a synthetic restock batch. To keep an audit
+  // trail we require either an explicit reason or notes from the manager.
+  const hasManualItem = items.some((it) => !it.batchId);
+  const trimmedNotes = typeof notes === "string" ? notes.trim() : "";
+  const trimmedReason = typeof reason === "string" ? reason.trim() : "";
+  if (hasManualItem && !trimmedNotes && !trimmedReason) {
+    res.status(400).json({
+      error:
+        "Manual returns (no original batch) require a reason or notes for audit trail",
+    });
+    return;
+  }
   for (const it of items) {
     const cf = it.conversionFactor ?? 1;
     const saleUnit = it.saleUnit ?? "unit";
