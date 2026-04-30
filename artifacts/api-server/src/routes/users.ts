@@ -43,7 +43,7 @@ router.post("/users", requireAuth, requireAdmin, async (req, res) => {
       username,
       passwordHash,
       fullName,
-      role: role as "admin" | "pharmacist" | "cashier",
+      role: role as "admin" | "manager" | "cashier",
       isActive: isActive ?? true,
     })
     .returning({
@@ -92,7 +92,7 @@ router.patch("/users/:id", requireAuth, requireAdmin, async (req, res) => {
   const updates: Partial<typeof usersTable.$inferInsert> = {};
   if (fullName !== undefined) updates.fullName = fullName;
   if (role !== undefined)
-    updates.role = role as "admin" | "pharmacist" | "cashier";
+    updates.role = role as "admin" | "manager" | "cashier";
   if (isActive !== undefined) updates.isActive = isActive;
   if (password) updates.passwordHash = await bcrypt.hash(password, 10);
 

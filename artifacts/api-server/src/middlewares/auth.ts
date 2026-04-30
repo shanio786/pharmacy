@@ -45,9 +45,9 @@ export function requireAdmin(req: Request, res: Response, next: NextFunction) {
   next();
 }
 
-export function requirePharmacist(req: Request, res: Response, next: NextFunction) {
-  if (req.user?.role !== "admin" && req.user?.role !== "pharmacist") {
-    res.status(403).json({ error: "Forbidden: pharmacist or admin role required" });
+export function requireManager(req: Request, res: Response, next: NextFunction) {
+  if (req.user?.role !== "admin" && req.user?.role !== "manager") {
+    res.status(403).json({ error: "Forbidden: manager or admin role required" });
     return;
   }
   next();

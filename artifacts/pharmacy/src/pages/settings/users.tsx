@@ -15,12 +15,12 @@ import { Plus, Edit, Trash2, Loader2 } from "lucide-react";
 
 const ROLES: Array<{ value: string; label: string }> = [
   { value: "admin", label: "Admin" },
-  { value: "pharmacist", label: "Manager" },
+  { value: "manager", label: "Manager" },
   { value: "cashier", label: "Cashier" },
 ];
 const ROLE_LABEL: Record<string, string> = {
   admin: "Admin",
-  pharmacist: "Manager",
+  manager: "Manager",
   cashier: "Cashier",
 };
 
@@ -37,14 +37,14 @@ export default function UserManagementPage() {
   const qc = useQueryClient();
   const [showDialog, setShowDialog] = useState(false);
   const [editItem, setEditItem] = useState<User | null>(null);
-  const [form, setForm] = useState<UserForm>({ username: "", password: "", fullName: "", role: "pharmacist", isActive: true });
+  const [form, setForm] = useState<UserForm>({ username: "", password: "", fullName: "", role: "manager", isActive: true });
 
   const { data: users = [], isLoading } = useListUsers();
   const createUser = useCreateUser();
   const updateUser = useUpdateUser();
   const deleteUser = useDeleteUser();
 
-  const openCreate = () => { setEditItem(null); setForm({ username: "", password: "", fullName: "", role: "pharmacist", isActive: true }); setShowDialog(true); };
+  const openCreate = () => { setEditItem(null); setForm({ username: "", password: "", fullName: "", role: "manager", isActive: true }); setShowDialog(true); };
   const openEdit = (u: User) => {
     setEditItem(u);
     setForm({ username: u.username, password: "", fullName: u.fullName, role: u.role, isActive: u.isActive });

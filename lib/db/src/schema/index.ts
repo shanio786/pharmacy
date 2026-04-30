@@ -16,7 +16,7 @@ import { z } from "zod/v4";
 
 export const userRoleEnum = pgEnum("user_role", [
   "admin",
-  "pharmacist",
+  "manager",
   "cashier",
 ]);
 export const saleStatusEnum = pgEnum("sale_status", [

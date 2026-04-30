@@ -464,6 +464,12 @@ export interface CreateSaleItemBody {
   prescriptionNote?: string | null;
 }
 
+export interface CreateSalePrescriptionBody {
+  doctorName: string;
+  doctorLicense?: string;
+  prescriptionDate: string;
+}
+
 export interface CreateSaleBody {
   /** @nullable */
   customerId?: number | null;
@@ -473,6 +479,11 @@ export interface CreateSaleBody {
   paymentMode: string;
   /** @nullable */
   notes?: string | null;
+  /** @nullable */
+  prescribedBy?: string | null;
+  /** @nullable */
+  patientName?: string | null;
+  prescription?: CreateSalePrescriptionBody;
   items: CreateSaleItemBody[];
 }
 

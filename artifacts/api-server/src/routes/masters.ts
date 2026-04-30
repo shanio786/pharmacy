@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { eq } from "drizzle-orm";
 import { db } from "../lib/db.js";
-import { requireAuth, requirePharmacist } from "../middlewares/auth.js";
+import { requireAuth, requireManager } from "../middlewares/auth.js";
 import {
   categoriesTable,
   companiesTable,
@@ -22,7 +22,7 @@ router.get("/categories", requireAuth, async (_req, res) => {
   res.json(rows);
 });
 
-router.post("/categories", requireAuth, requirePharmacist, async (req, res) => {
+router.post("/categories", requireAuth, requireManager, async (req, res) => {
   const { name, description } = req.body as {
     name: string;
     description?: string;
@@ -38,7 +38,7 @@ router.post("/categories", requireAuth, requirePharmacist, async (req, res) => {
   res.status(201).json(row);
 });
 
-router.patch("/categories/:id", requireAuth, requirePharmacist, async (req, res) => {
+router.patch("/categories/:id", requireAuth, requireManager, async (req, res) => {
   const id = Number(req.params["id"]);
   const { name, description } = req.body as {
     name?: string;
@@ -56,7 +56,7 @@ router.patch("/categories/:id", requireAuth, requirePharmacist, async (req, res)
   res.json(row);
 });
 
-router.delete("/categories/:id", requireAuth, requirePharmacist, async (req, res) => {
+router.delete("/categories/:id", requireAuth, requireManager, async (req, res) => {
   const id = Number(req.params["id"]);
   await db.delete(categoriesTable).where(eq(categoriesTable.id, id));
   res.status(204).send();
@@ -72,7 +72,7 @@ router.get("/companies", requireAuth, async (_req, res) => {
   res.json(rows);
 });
 
-router.post("/companies", requireAuth, requirePharmacist, async (req, res) => {
+router.post("/companies", requireAuth, requireManager, async (req, res) => {
   const { name, contact } = req.body as { name: string; contact?: string };
   if (!name) {
     res.status(400).json({ error: "Name is required" });
@@ -85,7 +85,7 @@ router.post("/companies", requireAuth, requirePharmacist, async (req, res) => {
   res.status(201).json(row);
 });
 
-router.patch("/companies/:id", requireAuth, requirePharmacist, async (req, res) => {
+router.patch("/companies/:id", requireAuth, requireManager, async (req, res) => {
   const id = Number(req.params["id"]);
   const { name, contact } = req.body as { name?: string; contact?: string };
   const [row] = await db
@@ -100,7 +100,7 @@ router.patch("/companies/:id", requireAuth, requirePharmacist, async (req, res) 
   res.json(row);
 });
 
-router.delete("/companies/:id", requireAuth, requirePharmacist, async (req, res) => {
+router.delete("/companies/:id", requireAuth, requireManager, async (req, res) => {
   const id = Number(req.params["id"]);
   await db.delete(companiesTable).where(eq(companiesTable.id, id));
   res.status(204).send();
@@ -113,7 +113,7 @@ router.get("/units", requireAuth, async (_req, res) => {
   res.json(rows);
 });
 
-router.post("/units", requireAuth, requirePharmacist, async (req, res) => {
+router.post("/units", requireAuth, requireManager, async (req, res) => {
   const { name } = req.body as { name: string };
   if (!name) {
     res.status(400).json({ error: "Name is required" });
@@ -123,7 +123,7 @@ router.post("/units", requireAuth, requirePharmacist, async (req, res) => {
   res.status(201).json(row);
 });
 
-router.patch("/units/:id", requireAuth, requirePharmacist, async (req, res) => {
+router.patch("/units/:id", requireAuth, requireManager, async (req, res) => {
   const id = Number(req.params["id"]);
   const { name } = req.body as { name?: string };
   const [row] = await db
@@ -138,7 +138,7 @@ router.patch("/units/:id", requireAuth, requirePharmacist, async (req, res) => {
   res.json(row);
 });
 
-router.delete("/units/:id", requireAuth, requirePharmacist, async (req, res) => {
+router.delete("/units/:id", requireAuth, requireManager, async (req, res) => {
   const id = Number(req.params["id"]);
   await db.delete(unitsTable).where(eq(unitsTable.id, id));
   res.status(204).send();
@@ -151,7 +151,7 @@ router.get("/racks", requireAuth, async (_req, res) => {
   res.json(rows);
 });
 
-router.post("/racks", requireAuth, requirePharmacist, async (req, res) => {
+router.post("/racks", requireAuth, requireManager, async (req, res) => {
   const { name, description } = req.body as {
     name: string;
     description?: string;
@@ -167,7 +167,7 @@ router.post("/racks", requireAuth, requirePharmacist, async (req, res) => {
   res.status(201).json(row);
 });
 
-router.patch("/racks/:id", requireAuth, requirePharmacist, async (req, res) => {
+router.patch("/racks/:id", requireAuth, requireManager, async (req, res) => {
   const id = Number(req.params["id"]);
   const { name, description } = req.body as {
     name?: string;
@@ -185,7 +185,7 @@ router.patch("/racks/:id", requireAuth, requirePharmacist, async (req, res) => {
   res.json(row);
 });
 
-router.delete("/racks/:id", requireAuth, requirePharmacist, async (req, res) => {
+router.delete("/racks/:id", requireAuth, requireManager, async (req, res) => {
   const id = Number(req.params["id"]);
   await db.delete(racksTable).where(eq(racksTable.id, id));
   res.status(204).send();
@@ -201,7 +201,7 @@ router.get("/generic-names", requireAuth, async (_req, res) => {
   res.json(rows);
 });
 
-router.post("/generic-names", requireAuth, requirePharmacist, async (req, res) => {
+router.post("/generic-names", requireAuth, requireManager, async (req, res) => {
   const { name } = req.body as { name: string };
   if (!name) {
     res.status(400).json({ error: "Name is required" });
@@ -214,7 +214,7 @@ router.post("/generic-names", requireAuth, requirePharmacist, async (req, res) =
   res.status(201).json(row);
 });
 
-router.patch("/generic-names/:id", requireAuth, requirePharmacist, async (req, res) => {
+router.patch("/generic-names/:id", requireAuth, requireManager, async (req, res) => {
   const id = Number(req.params["id"]);
   const { name } = req.body as { name?: string };
   const [row] = await db
@@ -229,7 +229,7 @@ router.patch("/generic-names/:id", requireAuth, requirePharmacist, async (req, r
   res.json(row);
 });
 
-router.delete("/generic-names/:id", requireAuth, requirePharmacist, async (req, res) => {
+router.delete("/generic-names/:id", requireAuth, requireManager, async (req, res) => {
   const id = Number(req.params["id"]);
   await db.delete(genericNamesTable).where(eq(genericNamesTable.id, id));
   res.status(204).send();

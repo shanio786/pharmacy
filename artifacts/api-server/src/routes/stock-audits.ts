@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { eq, desc } from "drizzle-orm";
 import { db } from "../lib/db.js";
-import { requireAuth, requirePharmacist } from "../middlewares/auth.js";
+import { requireAuth, requireManager } from "../middlewares/auth.js";
 import {
   stockAuditsTable,
   stockAuditItemsTable,
@@ -20,7 +20,7 @@ router.get("/stock-audits", requireAuth, async (_req, res) => {
   res.json(rows);
 });
 
-router.post("/stock-audits", requireAuth, requirePharmacist, async (req, res) => {
+router.post("/stock-audits", requireAuth, requireManager, async (req, res) => {
   const { date, notes, items } = req.body as {
     date: string;
     notes?: string;

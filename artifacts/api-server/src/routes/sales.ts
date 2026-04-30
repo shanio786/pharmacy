@@ -10,6 +10,7 @@ import {
   medicinesTable,
   customersTable,
   customerLedgerTable,
+  prescriptionsTable,
 } from "@workspace/db";
 
 const router = Router();
@@ -74,6 +75,7 @@ router.post("/sales", requireAuth, async (req, res) => {
     notes,
     prescribedBy,
     patientName,
+    prescription,
     items,
   } = req.body as {
     customerId?: number;
@@ -84,6 +86,11 @@ router.post("/sales", requireAuth, async (req, res) => {
     notes?: string;
     prescribedBy?: string;
     patientName?: string;
+    prescription?: {
+      doctorName: string;
+      doctorLicense?: string;
+      prescriptionDate: string;
+    };
     items: Array<{
       medicineId: number;
       batchId?: number | null;
@@ -140,14 +147,11 @@ router.post("/sales", requireAuth, async (req, res) => {
       return;
     }
 
-    // Controlled drug enforcement: check prescriptionNote per item OR sale-level prescribedBy
-    if (med.requiresPrescription) {
-      const hasPrescription =
-        item.prescriptionNote?.trim() ||
-        prescribedBy?.trim();
-      if (!hasPrescription) {
+    // Controlled drug enforcement: require prescription object with doctor details
+    if (med.requiresPrescription || med.isControlled) {
+      if (!prescription?.doctorName?.trim() || !prescription?.prescriptionDate?.trim()) {
         res.status(400).json({
-          error: `"${med.name}" requires a prescription. Provide prescriptionNote for this item or prescribedBy at the sale level.`,
+          error: `"${med.name}" requires a prescription. Provide prescription.doctorName and prescription.prescriptionDate.`,
         });
         return;
       }
@@ -299,6 +303,18 @@ router.post("/sales", requireAuth, async (req, res) => {
         };
       })
     );
+
+    // Insert prescription record if provided
+    if (prescription?.doctorName?.trim()) {
+      await tx.insert(prescriptionsTable).values({
+        saleId: sale.id,
+        doctorName: prescription.doctorName.trim(),
+        doctorLicense: prescription.doctorLicense?.trim() ?? null,
+        prescriptionDate: prescription.prescriptionDate,
+        patientName: patientName ?? null,
+        notes: notes ?? null,
+      });
+    }
 
     // Deduct stock per batch allocation inside the transaction
     for (const a of allocations) {

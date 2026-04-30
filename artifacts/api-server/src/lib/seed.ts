@@ -17,15 +17,15 @@ async function seed() {
       role: "admin",
       isActive: true,
     });
-    const phHash = await bcrypt.hash("pharma123", 10);
+    const mgrHash = await bcrypt.hash("manager123", 10);
     await db.insert(schema.usersTable).values({
-      username: "pharmacist",
-      passwordHash: phHash,
+      username: "manager",
+      passwordHash: mgrHash,
       fullName: "Ahmed Khan",
-      role: "pharmacist",
+      role: "manager",
       isActive: true,
     });
-    console.log("Created admin user (admin/admin123) and pharmacist (pharmacist/pharma123)");
+    console.log("Created admin user (admin/admin123) and manager (manager/manager123)");
   }
 
   // 2. Settings

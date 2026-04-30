@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { eq, ilike, or, sql, and, gt, min } from "drizzle-orm";
 import { db } from "../lib/db.js";
-import { requireAuth, requirePharmacist } from "../middlewares/auth.js";
+import { requireAuth, requireManager } from "../middlewares/auth.js";
 import {
   medicinesTable,
   batchesTable,
@@ -129,7 +129,7 @@ router.get("/medicines", requireAuth, async (req, res) => {
   res.json(rows);
 });
 
-router.post("/medicines", requireAuth, requirePharmacist, async (req, res) => {
+router.post("/medicines", requireAuth, requireManager, async (req, res) => {
   const body = mapBodyToDb(req.body as Record<string, unknown>);
   const [med] = await db.insert(medicinesTable).values(body as typeof medicinesTable.$inferInsert).returning();
   res.status(201).json({
@@ -163,7 +163,7 @@ router.get("/medicines/:id", requireAuth, async (req, res) => {
   res.json(row);
 });
 
-router.patch("/medicines/:id", requireAuth, requirePharmacist, async (req, res) => {
+router.patch("/medicines/:id", requireAuth, requireManager, async (req, res) => {
   const id = Number(req.params["id"]);
   const body = mapBodyToDb(req.body as Record<string, unknown>);
   const [med] = await db
@@ -186,7 +186,7 @@ router.patch("/medicines/:id", requireAuth, requirePharmacist, async (req, res) 
   });
 });
 
-router.delete("/medicines/:id", requireAuth, requirePharmacist, async (req, res) => {
+router.delete("/medicines/:id", requireAuth, requireManager, async (req, res) => {
   const id = Number(req.params["id"]);
   await db
     .update(medicinesTable)
@@ -236,7 +236,7 @@ router.get("/medicines/:id/alternatives", requireAuth, async (req, res) => {
 });
 
 // POST /medicines/adjust-stock — matches generated API contract (medicineId in body)
-router.post("/medicines/adjust-stock", requireAuth, requirePharmacist, async (req, res) => {
+router.post("/medicines/adjust-stock", requireAuth, requireManager, async (req, res) => {
   const { medicineId, batchId, adjustmentUnits, reason } = req.body as {
     medicineId: number;
     batchId?: number | null;
@@ -288,7 +288,7 @@ router.post("/medicines/adjust-stock", requireAuth, requirePharmacist, async (re
 });
 
 // Keep the legacy /:id/adjust-stock route for backwards compatibility
-router.post("/medicines/:id/adjust-stock", requireAuth, requirePharmacist, async (req, res) => {
+router.post("/medicines/:id/adjust-stock", requireAuth, requireManager, async (req, res) => {
   const id = Number(req.params["id"]);
   const { batchId, adjustment, adjustmentUnits, reason } = req.body as {
     batchId: number;

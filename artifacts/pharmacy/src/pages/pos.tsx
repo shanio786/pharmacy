@@ -123,6 +123,13 @@ function MedicineBatchSelector({
   );
 }
 
+interface PrescriptionInfo {
+  doctorName: string;
+  doctorLicense: string;
+  prescriptionDate: string;
+  patientName: string;
+}
+
 function PrescriptionDialog({
   open,
   controlledItems,
@@ -131,18 +138,25 @@ function PrescriptionDialog({
 }: {
   open: boolean;
   controlledItems: string[];
-  onConfirm: (prescribedBy: string, patientName: string) => void;
+  onConfirm: (info: PrescriptionInfo) => void;
   onCancel: () => void;
 }) {
-  const [prescribedBy, setPrescribedBy] = useState("");
-  const [patientName, setPatientName] = useState("");
+  const today = new Date().toISOString().slice(0, 10);
+  const [form, setForm] = useState<PrescriptionInfo>({
+    doctorName: "",
+    doctorLicense: "",
+    prescriptionDate: today,
+    patientName: "",
+  });
 
   const handleConfirm = () => {
-    if (!prescribedBy.trim()) return;
-    onConfirm(prescribedBy.trim(), patientName.trim());
-    setPrescribedBy("");
-    setPatientName("");
+    if (!form.doctorName.trim() || !form.prescriptionDate) return;
+    onConfirm({ ...form, doctorName: form.doctorName.trim() });
+    setForm({ doctorName: "", doctorLicense: "", prescriptionDate: today, patientName: "" });
   };
+
+  const set = (key: keyof PrescriptionInfo) => (e: React.ChangeEvent<HTMLInputElement>) =>
+    setForm((p) => ({ ...p, [key]: e.target.value }));
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onCancel()}>
@@ -163,24 +177,20 @@ function PrescriptionDialog({
             ))}
           </ul>
           <div className="space-y-1">
-            <Label className="text-xs">Prescribing Doctor <span className="text-destructive">*</span></Label>
-            <Input
-              value={prescribedBy}
-              onChange={(e) => setPrescribedBy(e.target.value)}
-              placeholder="Dr. Ahmed Khan"
-              className="h-8 text-xs"
-              data-testid="input-prescribed-by"
-            />
+            <Label className="text-xs">Doctor Name <span className="text-destructive">*</span></Label>
+            <Input value={form.doctorName} onChange={set("doctorName")} placeholder="Dr. Ahmed Khan" className="h-8 text-xs" data-testid="input-prescribed-by" />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Doctor License / PMDC No.</Label>
+            <Input value={form.doctorLicense} onChange={set("doctorLicense")} placeholder="PMDC-12345 (optional)" className="h-8 text-xs" />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Prescription Date <span className="text-destructive">*</span></Label>
+            <Input type="date" value={form.prescriptionDate} onChange={set("prescriptionDate")} className="h-8 text-xs" />
           </div>
           <div className="space-y-1">
             <Label className="text-xs">Patient Name</Label>
-            <Input
-              value={patientName}
-              onChange={(e) => setPatientName(e.target.value)}
-              placeholder="Patient name (optional)"
-              className="h-8 text-xs"
-              data-testid="input-patient-name"
-            />
+            <Input value={form.patientName} onChange={set("patientName")} placeholder="Patient name (optional)" className="h-8 text-xs" data-testid="input-patient-name" />
           </div>
         </div>
         <DialogFooter className="gap-2">
@@ -188,7 +198,7 @@ function PrescriptionDialog({
           <Button
             size="sm"
             onClick={handleConfirm}
-            disabled={!prescribedBy.trim()}
+            disabled={!form.doctorName.trim() || !form.prescriptionDate}
             data-testid="button-confirm-prescription"
           >
             Confirm &amp; Submit
@@ -265,7 +275,7 @@ export default function POSPage() {
 
   const controlledInCart = cart.filter((i) => i.isControlled);
 
-  const buildAndSubmitSale = async (prescriptionNote: string | null) => {
+  const buildAndSubmitSale = async (prescriptionInfo: PrescriptionInfo | null) => {
     const body: CreateSaleBody = {
       customerId: customerId !== "walk-in" ? Number(customerId) : null,
       date: format(new Date(), "yyyy-MM-dd"),
@@ -273,6 +283,15 @@ export default function POSPage() {
       paidAmount,
       paymentMode,
       notes: notes || null,
+      patientName: prescriptionInfo?.patientName || null,
+      prescribedBy: prescriptionInfo?.doctorName || null,
+      prescription: prescriptionInfo
+        ? {
+            doctorName: prescriptionInfo.doctorName,
+            doctorLicense: prescriptionInfo.doctorLicense || undefined,
+            prescriptionDate: prescriptionInfo.prescriptionDate,
+          }
+        : undefined,
       items: cart.map((item): CreateSaleItemBody => ({
         medicineId: item.medicineId,
         batchId: item.batchId,
@@ -280,7 +299,6 @@ export default function POSPage() {
         quantity: item.quantity,
         salePrice: item.salePrice,
         discountPercent: item.discountPercent,
-        prescriptionNote: item.isControlled ? prescriptionNote : null,
       })),
     };
     try {
@@ -312,10 +330,9 @@ export default function POSPage() {
     await buildAndSubmitSale(null);
   };
 
-  const handlePrescriptionConfirm = async (prescribedBy: string, patientName: string) => {
+  const handlePrescriptionConfirm = async (info: PrescriptionInfo) => {
     setShowPrescriptionDialog(false);
-    const note = `Dr. ${prescribedBy}${patientName ? ` | Patient: ${patientName}` : ""}`;
-    await buildAndSubmitSale(note);
+    await buildAndSubmitSale(info);
   };
 
   return (

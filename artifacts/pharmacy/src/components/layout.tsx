@@ -43,7 +43,7 @@ import {
   Menu,
 } from "lucide-react";
 
-type Role = "admin" | "pharmacist" | "cashier";
+type Role = "admin" | "manager" | "cashier";
 
 interface NavItem {
   label: string;
@@ -58,10 +58,10 @@ interface NavGroup {
   items: NavItem[];
 }
 
-const ROLE_RANK: Record<Role, number> = { cashier: 0, pharmacist: 1, admin: 2 };
+const ROLE_RANK: Record<Role, number> = { cashier: 0, manager: 1, admin: 2 };
 const ROLE_DISPLAY: Record<Role, string> = {
   admin: "Admin",
-  pharmacist: "Manager",
+  manager: "Manager",
   cashier: "Cashier",
 };
 
@@ -92,7 +92,7 @@ const navGroups: NavGroup[] = [
   },
   {
     label: "Purchases",
-    minRole: "pharmacist",
+    minRole: "manager",
     items: [
       { label: "GRN / Purchase", icon: PackagePlus, href: "/purchases" },
       { label: "Purchase Returns", icon: Package, href: "/purchase-returns" },
@@ -101,7 +101,7 @@ const navGroups: NavGroup[] = [
   },
   {
     label: "Stock",
-    minRole: "pharmacist",
+    minRole: "manager",
     items: [
       { label: "Medicines", icon: Pill, href: "/medicines" },
       { label: "Stock Audit", icon: ClipboardCheck, href: "/stock-audit" },
@@ -110,7 +110,7 @@ const navGroups: NavGroup[] = [
   },
   {
     label: "Ledger",
-    minRole: "pharmacist",
+    minRole: "manager",
     items: [
       { label: "Suppliers", icon: Building2, href: "/suppliers" },
       { label: "Customers", icon: Users, href: "/customers" },
@@ -118,7 +118,7 @@ const navGroups: NavGroup[] = [
   },
   {
     label: "Reports",
-    minRole: "pharmacist",
+    minRole: "manager",
     items: [
       { label: "Sales Report", icon: BarChart2, href: "/reports/sales" },
       { label: "Stock Report", icon: Boxes, href: "/reports/stock" },
@@ -130,7 +130,7 @@ const navGroups: NavGroup[] = [
   },
   {
     label: "Settings",
-    minRole: "pharmacist",
+    minRole: "manager",
     items: [
       { label: "General Settings", icon: Settings, href: "/settings" },
       { label: "User Management", icon: UserCog, href: "/settings/users", minRole: "admin" },

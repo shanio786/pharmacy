@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { eq, ilike, desc } from "drizzle-orm";
 import { db } from "../lib/db.js";
-import { requireAuth, requirePharmacist } from "../middlewares/auth.js";
+import { requireAuth, requireManager } from "../middlewares/auth.js";
 import { customersTable, customerLedgerTable } from "@workspace/db";
 
 const router = Router();
@@ -72,7 +72,7 @@ router.patch("/customers/:id", requireAuth, async (req, res) => {
   res.json(row);
 });
 
-router.delete("/customers/:id", requireAuth, requirePharmacist, async (req, res) => {
+router.delete("/customers/:id", requireAuth, requireManager, async (req, res) => {
   const id = Number(req.params["id"]);
   await db.delete(customersTable).where(eq(customersTable.id, id));
   res.status(204).send();
@@ -98,7 +98,7 @@ router.get("/customers/:id/ledger", requireAuth, async (req, res) => {
   res.json({ customer, entries, balance: Number(customer.balance) });
 });
 
-router.post("/customers/:id/payment", requireAuth, requirePharmacist, async (req, res) => {
+router.post("/customers/:id/payment", requireAuth, requireManager, async (req, res) => {
   const id = Number(req.params["id"]);
   const { amount, date, notes } = req.body as {
     amount: number;

@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { eq, desc } from "drizzle-orm";
 import { db } from "../lib/db.js";
-import { requireAuth, requirePharmacist } from "../middlewares/auth.js";
+import { requireAuth, requireManager } from "../middlewares/auth.js";
 import {
   purchaseOrdersTable,
   purchaseOrderItemsTable,
@@ -12,7 +12,7 @@ import { logActivity } from "../lib/activity-log.js";
 
 const router = Router();
 
-router.get("/purchase-orders", requireAuth, requirePharmacist, async (req, res) => {
+router.get("/purchase-orders", requireAuth, requireManager, async (req, res) => {
   const rows = await db
     .select({
       id: purchaseOrdersTable.id,
@@ -29,7 +29,7 @@ router.get("/purchase-orders", requireAuth, requirePharmacist, async (req, res) 
   res.json(rows);
 });
 
-router.get("/purchase-orders/:id", requireAuth, requirePharmacist, async (req, res) => {
+router.get("/purchase-orders/:id", requireAuth, requireManager, async (req, res) => {
   const id = Number(req.params.id);
   const [po] = await db
     .select({
@@ -65,7 +65,7 @@ router.get("/purchase-orders/:id", requireAuth, requirePharmacist, async (req, r
   res.json({ ...po, items });
 });
 
-router.post("/purchase-orders", requireAuth, requirePharmacist, async (req, res) => {
+router.post("/purchase-orders", requireAuth, requireManager, async (req, res) => {
   const { supplierId, notes, items } = req.body as {
     supplierId?: number;
     notes?: string;
@@ -110,7 +110,7 @@ router.post("/purchase-orders", requireAuth, requirePharmacist, async (req, res)
   res.status(201).json(result);
 });
 
-router.patch("/purchase-orders/:id/status", requireAuth, requirePharmacist, async (req, res) => {
+router.patch("/purchase-orders/:id/status", requireAuth, requireManager, async (req, res) => {
   const id = Number(req.params.id);
   const { status } = req.body as { status: "draft" | "sent" | "received" | "cancelled" };
 
@@ -136,7 +136,7 @@ router.patch("/purchase-orders/:id/status", requireAuth, requirePharmacist, asyn
   res.json(updated);
 });
 
-router.delete("/purchase-orders/:id", requireAuth, requirePharmacist, async (req, res) => {
+router.delete("/purchase-orders/:id", requireAuth, requireManager, async (req, res) => {
   const id = Number(req.params.id);
   const [deleted] = await db
     .delete(purchaseOrdersTable)

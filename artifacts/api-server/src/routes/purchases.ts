@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { eq, desc, gte, lte, and, sql } from "drizzle-orm";
 import { db } from "../lib/db.js";
-import { requireAuth, requirePharmacist } from "../middlewares/auth.js";
+import { requireAuth, requireManager } from "../middlewares/auth.js";
 import {
   purchasesTable,
   purchaseItemsTable,
@@ -48,7 +48,7 @@ router.get("/purchases", requireAuth, async (req, res) => {
   res.json(rows);
 });
 
-router.post("/purchases", requireAuth, requirePharmacist, async (req, res) => {
+router.post("/purchases", requireAuth, requireManager, async (req, res) => {
   const { supplierId, invoiceNo, date, notes, items, paidAmount } = req.body as {
     supplierId?: number;
     invoiceNo?: string;
@@ -238,7 +238,7 @@ router.get("/purchases/:id", requireAuth, async (req, res) => {
 });
 
 // POST /purchases/sale-based-po → DraftPOItem[] (matches generated client URL and contract)
-router.post("/purchases/sale-based-po", requireAuth, requirePharmacist, async (req, res) => {
+router.post("/purchases/sale-based-po", requireAuth, requireManager, async (req, res) => {
   const { dateFrom, dateTo } = req.body as {
     dateFrom: string;
     dateTo: string;

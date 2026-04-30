@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { eq, desc, gte, lte, and } from "drizzle-orm";
 import { db } from "../lib/db.js";
-import { requireAuth, requirePharmacist } from "../middlewares/auth.js";
+import { requireAuth, requireManager } from "../middlewares/auth.js";
 import { missedSalesTable, medicinesTable } from "@workspace/db";
 
 const router = Router();
@@ -57,7 +57,7 @@ router.post("/missed-sales", requireAuth, async (req, res) => {
   res.status(201).json(row);
 });
 
-router.delete("/missed-sales/:id", requireAuth, requirePharmacist, async (req, res) => {
+router.delete("/missed-sales/:id", requireAuth, requireManager, async (req, res) => {
   const id = Number(req.params["id"]);
   await db.delete(missedSalesTable).where(eq(missedSalesTable.id, id));
   res.status(204).send();

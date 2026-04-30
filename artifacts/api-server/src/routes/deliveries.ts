@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { eq, desc, and, gte, lte } from "drizzle-orm";
 import { db } from "../lib/db.js";
-import { requireAuth, requirePharmacist } from "../middlewares/auth.js";
+import { requireAuth, requireManager } from "../middlewares/auth.js";
 import { deliveriesTable, customersTable } from "@workspace/db";
 
 const router = Router();
@@ -100,7 +100,7 @@ router.get("/deliveries/:id", requireAuth, async (req, res) => {
   res.json(row);
 });
 
-router.patch("/deliveries/:id", requireAuth, requirePharmacist, async (req, res) => {
+router.patch("/deliveries/:id", requireAuth, requireManager, async (req, res) => {
   const id = Number(req.params["id"]);
   const { status, notes, phone, address } = req.body as {
     status?: string;

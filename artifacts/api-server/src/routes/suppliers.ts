@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { eq, desc } from "drizzle-orm";
 import { db } from "../lib/db.js";
-import { requireAuth, requirePharmacist } from "../middlewares/auth.js";
+import { requireAuth, requireManager } from "../middlewares/auth.js";
 import { suppliersTable, supplierLedgerTable } from "@workspace/db";
 
 const router = Router();
@@ -14,7 +14,7 @@ router.get("/suppliers", requireAuth, async (_req, res) => {
   res.json(rows);
 });
 
-router.post("/suppliers", requireAuth, requirePharmacist, async (req, res) => {
+router.post("/suppliers", requireAuth, requireManager, async (req, res) => {
   const { name, contact, address, email, ntn } = req.body as {
     name: string;
     contact?: string;
@@ -47,7 +47,7 @@ router.get("/suppliers/:id", requireAuth, async (req, res) => {
   res.json(row);
 });
 
-router.patch("/suppliers/:id", requireAuth, requirePharmacist, async (req, res) => {
+router.patch("/suppliers/:id", requireAuth, requireManager, async (req, res) => {
   const id = Number(req.params["id"]);
   const { name, contact, address, email, ntn } = req.body as {
     name?: string;
@@ -68,7 +68,7 @@ router.patch("/suppliers/:id", requireAuth, requirePharmacist, async (req, res) 
   res.json(row);
 });
 
-router.delete("/suppliers/:id", requireAuth, requirePharmacist, async (req, res) => {
+router.delete("/suppliers/:id", requireAuth, requireManager, async (req, res) => {
   const id = Number(req.params["id"]);
   await db.delete(suppliersTable).where(eq(suppliersTable.id, id));
   res.status(204).send();
@@ -94,7 +94,7 @@ router.get("/suppliers/:id/ledger", requireAuth, async (req, res) => {
   res.json({ supplier, entries, balance: Number(supplier.balance) });
 });
 
-router.post("/suppliers/:id/payment", requireAuth, requirePharmacist, async (req, res) => {
+router.post("/suppliers/:id/payment", requireAuth, requireManager, async (req, res) => {
   const id = Number(req.params["id"]);
   const { amount, date, notes } = req.body as {
     amount: number;
