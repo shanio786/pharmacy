@@ -67,10 +67,16 @@ router.post("/sale-returns", requireAuth, requireManager, async (req, res) => {
   };
 
   const normalizedItems = items.map((item) => {
-    const quantityUnits = item.quantityUnits ?? item.quantity ?? 0;
-    const salePriceUnit = item.salePriceUnit ?? item.salePrice ?? 0;
     const cf = item.conversionFactor ?? 1;
-    const salePricePack = item.salePricePack ?? salePriceUnit * cf;
+    const saleUnit = item.saleUnit ?? "unit";
+    const requestedQty = item.quantityPacks ?? item.quantity ?? 0;
+    const quantityUnits = item.quantityUnits != null
+      ? item.quantityUnits
+      : saleUnit === "pack" ? Math.round(requestedQty * cf) : requestedQty;
+    const salePriceUnit = item.salePriceUnit != null
+      ? item.salePriceUnit
+      : saleUnit === "pack" ? (item.salePrice ?? 0) / cf : (item.salePrice ?? 0);
+    const salePricePack = item.salePricePack ?? (saleUnit === "pack" ? (item.salePrice ?? 0) : salePriceUnit * cf);
     return {
       ...item,
       quantityUnits,
