@@ -75,7 +75,12 @@ router.post("/purchases", requireAuth, async (req, res) => {
   const itemsToInsert = items.map((item) => {
     const itemTotal = item.quantityUnits * item.purchasePriceUnit;
     totalAmount += itemTotal;
-    return { ...item, totalAmount: String(itemTotal) };
+    return {
+      ...item,
+      totalAmount: String(itemTotal),
+      purchasePriceUnit: String(item.purchasePriceUnit),
+      salePriceUnit: String(item.salePriceUnit),
+    };
   });
 
   const paid = paidAmount ?? totalAmount;
