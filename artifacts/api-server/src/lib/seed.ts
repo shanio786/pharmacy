@@ -6,7 +6,7 @@ import { sql } from "drizzle-orm";
 async function seed() {
   console.log("Seeding database...");
 
-  // 1. Admin user
+  // Admin user
   const existingUsers = await db.select().from(schema.usersTable).limit(1);
   if (!existingUsers.length) {
     const { randomBytes } = await import("node:crypto");
@@ -41,7 +41,7 @@ async function seed() {
     }
   }
 
-  // 2. Settings
+  // Settings
   const existingSettings = await db.select().from(schema.settingsTable).limit(1);
   if (!existingSettings.length) {
     await db.insert(schema.settingsTable).values({
@@ -55,7 +55,7 @@ async function seed() {
     });
   }
 
-  // 3. Categories
+  // Categories
   const existingCats = await db.select().from(schema.categoriesTable).limit(1);
   if (!existingCats.length) {
     await db.insert(schema.categoriesTable).values([
@@ -77,7 +77,7 @@ async function seed() {
     ]);
   }
 
-  // 4. Companies
+  // Companies
   const existingCos = await db.select().from(schema.companiesTable).limit(1);
   if (!existingCos.length) {
     await db.insert(schema.companiesTable).values([
@@ -96,7 +96,7 @@ async function seed() {
     ]);
   }
 
-  // 5. Units
+  // Units
   const existingUnits = await db.select().from(schema.unitsTable).limit(1);
   if (!existingUnits.length) {
     await db.insert(schema.unitsTable).values([
@@ -113,7 +113,7 @@ async function seed() {
     ]);
   }
 
-  // 6. Racks
+  // Racks
   const existingRacks = await db.select().from(schema.racksTable).limit(1);
   if (!existingRacks.length) {
     await db.insert(schema.racksTable).values([
@@ -131,7 +131,7 @@ async function seed() {
     ]);
   }
 
-  // 7. Generic Names
+  // Generic Names
   const existingGN = await db.select().from(schema.genericNamesTable).limit(1);
   if (!existingGN.length) {
     await db.insert(schema.genericNamesTable).values([
@@ -213,7 +213,7 @@ async function seed() {
   const rackId = (name: string) => racks.find((r) => r.name === name)?.id;
   const gnId = (name: string) => gns.find((g) => g.name === name)?.id;
 
-  // 8. Medicines (100+)
+  // Medicines (100+)
   const existingMeds = await db.select().from(schema.medicinesTable).limit(1);
   if (!existingMeds.length) {
     const medicines = [
@@ -362,7 +362,7 @@ async function seed() {
     console.log(`Seeded ${medicines.length} medicines`);
   }
 
-  // 9. Seed some batches for stock
+  // Seed some batches for stock
   const medsList = await db.select().from(schema.medicinesTable).limit(50);
   const existingBatches = await db.select().from(schema.batchesTable).limit(1);
 
@@ -387,7 +387,7 @@ async function seed() {
     console.log(`Seeded ${batchRows.length} batches`);
   }
 
-  // 10. Seed suppliers and customers
+  // Seed suppliers and customers
   const existingSuppliers = await db.select().from(schema.suppliersTable).limit(1);
   if (!existingSuppliers.length) {
     await db.insert(schema.suppliersTable).values([

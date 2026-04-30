@@ -226,7 +226,7 @@ router.get("/purchases/:id", requireAuth, async (req, res) => {
       batchNo: purchaseItemsTable.batchNo,
       expiryDate: purchaseItemsTable.expiryDate,
       packsReceived: purchaseItemsTable.quantityPacks,
-      quantityUnits: purchaseItemsTable.quantityUnits,
+      unitsReceived: purchaseItemsTable.quantityUnits,
       purchasePrice: purchaseItemsTable.purchasePriceUnit,
       salePrice: purchaseItemsTable.salePriceUnit,
       totalAmount: purchaseItemsTable.totalAmount,

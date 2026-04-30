@@ -109,10 +109,6 @@ router.post("/sales", requireAuth, async (req, res) => {
 
   const today = new Date().toISOString().slice(0, 10);
 
-  // ------------------------------------------------------------------
-  // Pre-flight: validate medicines, controlled drug enforcement, and
-  // build multi-batch FEFO allocations (may span multiple batches).
-  // ------------------------------------------------------------------
   type BatchAllocation = {
     medicineId: number;
     medicineName: string;
@@ -248,9 +244,6 @@ router.post("/sales", requireAuth, async (req, res) => {
     }
   }
 
-  // ------------------------------------------------------------------
-  // Compute sale totals (sum of per-allocation lineTotals)
-  // ------------------------------------------------------------------
   const subtotal = allocations.reduce((sum, a) => sum + a.lineTotal, 0);
   const disc = discountAmount ?? 0;
   const totalAmount = subtotal - disc;
@@ -258,9 +251,6 @@ router.post("/sales", requireAuth, async (req, res) => {
   const status = paid >= totalAmount ? "completed" : paid > 0 ? "partial" : "credit";
   const invoiceNo = generateInvoiceNo();
 
-  // ------------------------------------------------------------------
-  // All DB writes inside a single transaction
-  // ------------------------------------------------------------------
   const result = await db.transaction(async (tx) => {
     const [sale] = await tx
       .insert(salesTable)
@@ -417,6 +407,7 @@ router.get("/sales/:id", requireAuth, async (req, res) => {
       batchId: saleItemsTable.batchId,
       batchNo: saleItemsTable.batchNo,
       quantity: saleItemsTable.quantityUnits,
+      saleUnit: saleItemsTable.saleUnit,
       salePrice: saleItemsTable.salePriceUnit,
       discountPercent: saleItemsTable.discountPct,
       totalAmount: saleItemsTable.totalAmount,

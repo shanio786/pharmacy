@@ -12,7 +12,6 @@ import {
 
 const router = Router();
 
-// ─── Categories ───────────────────────────────────────────────────────────────
 
 router.get("/categories", requireAuth, async (_req, res) => {
   const rows = await db
@@ -62,7 +61,6 @@ router.delete("/categories/:id", requireAuth, requireManager, async (req, res) =
   res.status(204).send();
 });
 
-// ─── Companies ────────────────────────────────────────────────────────────────
 
 router.get("/companies", requireAuth, async (_req, res) => {
   const rows = await db
@@ -106,7 +104,6 @@ router.delete("/companies/:id", requireAuth, requireManager, async (req, res) =>
   res.status(204).send();
 });
 
-// ─── Units ────────────────────────────────────────────────────────────────────
 
 router.get("/units", requireAuth, async (_req, res) => {
   const rows = await db.select().from(unitsTable).orderBy(unitsTable.name);
@@ -144,7 +141,6 @@ router.delete("/units/:id", requireAuth, requireManager, async (req, res) => {
   res.status(204).send();
 });
 
-// ─── Racks ────────────────────────────────────────────────────────────────────
 
 router.get("/racks", requireAuth, async (_req, res) => {
   const rows = await db.select().from(racksTable).orderBy(racksTable.name);
@@ -191,7 +187,6 @@ router.delete("/racks/:id", requireAuth, requireManager, async (req, res) => {
   res.status(204).send();
 });
 
-// ─── Generic Names ────────────────────────────────────────────────────────────
 
 router.get("/generic-names", requireAuth, async (_req, res) => {
   const rows = await db
