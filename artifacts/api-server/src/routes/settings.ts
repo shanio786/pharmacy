@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "../lib/db.js";
-import { requireAuth, requireAdmin } from "../middlewares/auth.js";
+import { requireAuth, requireManager } from "../middlewares/auth.js";
 import { settingsTable } from "@workspace/db";
 
 const router = Router();
@@ -13,7 +13,7 @@ router.get("/settings", requireAuth, async (_req, res) => {
   res.json(row);
 });
 
-router.patch("/settings", requireAuth, requireAdmin, async (req, res) => {
+router.patch("/settings", requireAuth, requireManager, async (req, res) => {
   const body = req.body as Partial<typeof settingsTable.$inferInsert>;
   let [row] = await db.select().from(settingsTable).limit(1);
 

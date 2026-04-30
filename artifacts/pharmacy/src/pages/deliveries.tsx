@@ -13,7 +13,8 @@ import { useToast } from "@/hooks/use-toast";
 import { Plus, Loader2, Truck, Edit } from "lucide-react";
 import { format } from "date-fns";
 
-const STATUS_BADGE: Record<string, any> = {
+type BadgeVariant = "secondary" | "default" | "destructive" | "outline";
+const STATUS_BADGE: Record<string, BadgeVariant> = {
   pending: "secondary",
   dispatched: "default",
   delivered: "default",

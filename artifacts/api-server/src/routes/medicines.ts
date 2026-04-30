@@ -49,8 +49,8 @@ function withStock(select: typeof medicineSelect) {
     totalUnits: sql<number>`COALESCE((SELECT SUM(b.quantity_units) FROM batches b WHERE b.medicine_id = ${medicinesTable.id} AND b.expiry_date >= CURRENT_DATE), 0)`,
     totalPacks: sql<number>`COALESCE((SELECT SUM(b.quantity_units) / NULLIF(${medicinesTable.unitsPerPack}, 0) FROM batches b WHERE b.medicine_id = ${medicinesTable.id} AND b.expiry_date >= CURRENT_DATE), 0)`,
     nearestExpiry: sql<string | null>`(SELECT MIN(b.expiry_date) FROM batches b WHERE b.medicine_id = ${medicinesTable.id} AND b.expiry_date >= CURRENT_DATE AND b.quantity_units > 0)`,
-    barcode: sql<string | null>`NULL`,
-    defaultSaleUnit: sql<string>`'unit'`,
+    barcode: medicinesTable.barcode,
+    defaultSaleUnit: medicinesTable.defaultSaleUnit,
   };
 }
 
@@ -73,9 +73,15 @@ function mapBodyToDb(body: Record<string, unknown>): Record<string, unknown> {
     mapped["minStock"] = body["reorderLevel"];
     delete mapped["reorderLevel"];
   }
+  // Normalize defaultSaleUnit if invalid
+  if (
+    "defaultSaleUnit" in mapped &&
+    mapped["defaultSaleUnit"] !== "unit" &&
+    mapped["defaultSaleUnit"] !== "pack"
+  ) {
+    delete mapped["defaultSaleUnit"];
+  }
   // Remove derived/virtual fields not in DB
-  delete mapped["barcode"];
-  delete mapped["defaultSaleUnit"];
   delete mapped["totalUnits"];
   delete mapped["totalPacks"];
   delete mapped["nearestExpiry"];
@@ -105,7 +111,8 @@ router.get("/medicines", requireAuth, async (req, res) => {
         ilike(medicinesTable.name, `%${search}%`),
         ilike(genericNamesTable.name, `%${search}%`),
         ilike(companiesTable.name, `%${search}%`),
-        ilike(medicinesTable.strength, `%${search}%`)
+        ilike(medicinesTable.strength, `%${search}%`),
+        ilike(medicinesTable.barcode, `%${search}%`)
       )!
     );
   }
@@ -137,8 +144,8 @@ router.post("/medicines", requireAuth, requireManager, async (req, res) => {
     salePrice: med.salePriceUnit,
     purchasePrice: med.purchasePriceUnit,
     reorderLevel: med.minStock,
-    barcode: null,
-    defaultSaleUnit: "unit",
+    barcode: med.barcode,
+    defaultSaleUnit: med.defaultSaleUnit,
   });
 });
 
@@ -180,8 +187,8 @@ router.patch("/medicines/:id", requireAuth, requireManager, async (req, res) => 
     salePrice: med.salePriceUnit,
     purchasePrice: med.purchasePriceUnit,
     reorderLevel: med.minStock,
-    barcode: null,
-    defaultSaleUnit: "unit",
+    barcode: med.barcode,
+    defaultSaleUnit: med.defaultSaleUnit,
   });
 });
 

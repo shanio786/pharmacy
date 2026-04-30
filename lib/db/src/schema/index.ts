@@ -168,6 +168,8 @@ export const medicinesTable = pgTable("medicines", {
     .notNull()
     .default(false),
   description: text("description"),
+  barcode: text("barcode"),
+  defaultSaleUnit: text("default_sale_unit").notNull().default("unit"),
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
