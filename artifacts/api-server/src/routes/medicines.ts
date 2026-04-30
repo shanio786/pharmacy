@@ -196,10 +196,17 @@ router.delete("/medicines/:id", requireAuth, requireManager, async (req, res) =>
 
 router.get("/medicines/:id/batches", requireAuth, async (req, res) => {
   const id = Number(req.params["id"]);
+  const today = new Date().toISOString().slice(0, 10);
   const batches = await db
     .select()
     .from(batchesTable)
-    .where(and(eq(batchesTable.medicineId, id), gt(batchesTable.quantityUnits, 0)))
+    .where(
+      and(
+        eq(batchesTable.medicineId, id),
+        gt(batchesTable.quantityUnits, 0),
+        sql`${batchesTable.expiryDate} >= ${today}::date`,
+      ),
+    )
     .orderBy(batchesTable.expiryDate);
   res.json(batches);
 });

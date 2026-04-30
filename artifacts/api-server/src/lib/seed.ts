@@ -410,6 +410,14 @@ async function seed() {
     ]);
   }
 
+  // Bulk Pakistani medicines (20k+ realistic entries)
+  try {
+    const { seedBulkMedicines } = await import("./bulk-medicines.js");
+    await seedBulkMedicines(db, (msg) => console.log(msg));
+  } catch (e) {
+    console.error("Bulk medicines seed failed:", e);
+  }
+
   console.log("Seeding complete!");
   await pool.end();
 }

@@ -168,15 +168,27 @@ router.post("/sales", requireAuth, async (req, res) => {
     let remaining = quantityInUnits;
 
     if (item.batchId) {
-      // Specific batch requested — validate stock, then fall through to FEFO for remainder
+      // Specific batch requested — validate stock + non-expired, then fall through to FEFO for remainder
       const [specBatch] = await db
-        .select({ id: batchesTable.id, batchNo: batchesTable.batchNo, quantityUnits: batchesTable.quantityUnits })
+        .select({
+          id: batchesTable.id,
+          batchNo: batchesTable.batchNo,
+          quantityUnits: batchesTable.quantityUnits,
+          expiryDate: batchesTable.expiryDate,
+        })
         .from(batchesTable)
         .where(and(eq(batchesTable.id, item.batchId), eq(batchesTable.medicineId, item.medicineId)))
         .limit(1);
 
       if (!specBatch) {
         res.status(400).json({ error: `Batch ID ${item.batchId} not found for "${med.name}"` });
+        return;
+      }
+
+      if (specBatch.expiryDate < today) {
+        res.status(400).json({
+          error: `Batch ${specBatch.batchNo} of "${med.name}" expired on ${specBatch.expiryDate}; cannot be sold.`,
+        });
         return;
       }
 
