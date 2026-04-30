@@ -2,6 +2,7 @@ import { Router } from "express";
 import { eq, desc, gte, lte, and, asc, gt } from "drizzle-orm";
 import { db } from "../lib/db.js";
 import { requireAuth } from "../middlewares/auth.js";
+import { logActivity } from "../lib/activity-log.js";
 import {
   salesTable,
   saleItemsTable,
@@ -329,6 +330,14 @@ router.post("/sales", requireAuth, async (req, res) => {
 
     return sale;
   });
+
+  await logActivity(
+    req.user?.userId,
+    "create_sale",
+    "sale",
+    result.id,
+    `Sale ${result.invoiceNo} created, total: ${result.totalAmount}`
+  );
 
   res.status(201).json({ ...result, items: allocations });
 });

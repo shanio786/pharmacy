@@ -71,6 +71,9 @@ import type {
   PaymentBody,
   ProfitLossReport,
   Purchase,
+  PurchaseOrder,
+  PurchaseOrderItem,
+  CreatePurchaseOrderBody,
   PurchaseReport,
   PurchaseReturn,
   PurchaseReturnWithItems,
@@ -7016,4 +7019,102 @@ export function useGetProfitLossReport<
   };
 
   return { ...query, queryKey: queryOptions.queryKey };
+}
+
+// ─── Purchase Orders ──────────────────────────────────────────────────────────
+
+export const getListPurchaseOrdersUrl = () => `/api/purchase-orders`;
+
+export const listPurchaseOrders = async (options?: RequestInit): Promise<PurchaseOrder[]> => {
+  return customFetch<PurchaseOrder[]>(getListPurchaseOrdersUrl(), { ...options, method: "GET" });
+};
+
+export const getListPurchaseOrdersQueryKey = () => [`/api/purchase-orders`] as const;
+
+export const getListPurchaseOrdersQueryOptions = <
+  TData = Awaited<ReturnType<typeof listPurchaseOrders>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<Awaited<ReturnType<typeof listPurchaseOrders>>, TError, TData>;
+}): UseQueryOptions<Awaited<ReturnType<typeof listPurchaseOrders>>, TError, TData> & { queryKey: QueryKey } => {
+  const queryKey = options?.query?.queryKey ?? getListPurchaseOrdersQueryKey();
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listPurchaseOrders>>> = ({ signal }) =>
+    listPurchaseOrders({ signal });
+  return { queryKey, queryFn, ...(options?.query ?? {}) } as UseQueryOptions<
+    Awaited<ReturnType<typeof listPurchaseOrders>>, TError, TData
+  > & { queryKey: QueryKey };
+};
+
+export function useListPurchaseOrders<
+  TData = Awaited<ReturnType<typeof listPurchaseOrders>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<Awaited<ReturnType<typeof listPurchaseOrders>>, TError, TData>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListPurchaseOrdersQueryOptions(options);
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & { queryKey: QueryKey };
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getCreatePurchaseOrderUrl = () => `/api/purchase-orders`;
+
+export const createPurchaseOrder = async (
+  body: CreatePurchaseOrderBody,
+  options?: RequestInit,
+): Promise<PurchaseOrder> => {
+  return customFetch<PurchaseOrder>(getCreatePurchaseOrderUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(body),
+  });
+};
+
+export const getCreatePurchaseOrderMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createPurchaseOrder>>,
+    TError,
+    { data: BodyType<CreatePurchaseOrderBody> },
+    TContext
+  >;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createPurchaseOrder>>,
+  TError,
+  { data: BodyType<CreatePurchaseOrderBody> },
+  TContext
+> => {
+  const mutationKey = ["createPurchaseOrder"];
+  const { mutation: mutationOptions } = options
+    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey } };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createPurchaseOrder>>,
+    { data: BodyType<CreatePurchaseOrderBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+    return createPurchaseOrder(data);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export function useCreatePurchaseOrder<
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createPurchaseOrder>>,
+    TError,
+    { data: BodyType<CreatePurchaseOrderBody> },
+    TContext
+  >;
+}) {
+  const mutationOptions = getCreatePurchaseOrderMutationOptions(options);
+  return useMutation(mutationOptions);
 }

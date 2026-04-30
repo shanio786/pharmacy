@@ -1,25 +1,30 @@
 import { useState } from "react";
-import { useGenerateSaleBasedPO, useListSuppliers } from "@workspace/api-client-react";
-import type { SaleBasedPOBody, DraftPOItem } from "@workspace/api-client-react";
+import { useGenerateSaleBasedPO, useListSuppliers, useCreatePurchaseOrder } from "@workspace/api-client-react";
+import type { SaleBasedPOBody, DraftPOItem, Supplier, CreatePurchaseOrderBody } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, FileText, Printer } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { Loader2, FileText, Printer, Save } from "lucide-react";
 import { format, subDays } from "date-fns";
 
 export default function SalePOPage() {
   const { toast } = useToast();
+  const qc = useQueryClient();
   const [dateFrom, setDateFrom] = useState(format(subDays(new Date(), 30), "yyyy-MM-dd"));
   const [dateTo, setDateTo] = useState(format(new Date(), "yyyy-MM-dd"));
   const [supplierId, setSupplierId] = useState<string>("none");
   const [poItems, setPoItems] = useState<DraftPOItem[]>([]);
   const [generated, setGenerated] = useState(false);
+  const [saved, setSaved] = useState(false);
 
-  const { data: suppliers = [] } = useListSuppliers();
+  const { data: supplierData = [] } = useListSuppliers();
+  const suppliers = supplierData as Supplier[];
   const generatePO = useGenerateSaleBasedPO();
+  const createPO = useCreatePurchaseOrder();
 
   const handleGenerate = async () => {
     if (!dateFrom || !dateTo) {
@@ -35,6 +40,27 @@ export default function SalePOPage() {
       const result = await generatePO.mutateAsync({ data: body });
       setPoItems(result as DraftPOItem[]);
       setGenerated(true);
+      setSaved(false);
+    } catch (err: unknown) {
+      toast({ title: "Error", description: err instanceof Error ? err.message : "Request failed", variant: "destructive" });
+    }
+  };
+
+  const handleSavePO = async () => {
+    if (!poItems.length) return;
+    const body: CreatePurchaseOrderBody = {
+      supplierId: supplierId !== "none" ? Number(supplierId) : null,
+      notes: `Auto-generated from sales ${dateFrom} to ${dateTo}`,
+      items: poItems.map((item) => ({
+        medicineId: item.medicineId,
+        quantityPacks: item.suggestedPacks,
+      })),
+    };
+    try {
+      await createPO.mutateAsync({ data: body });
+      toast({ title: "Purchase order saved successfully" });
+      setSaved(true);
+      qc.invalidateQueries();
     } catch (err: unknown) {
       toast({ title: "Error", description: err instanceof Error ? err.message : "Request failed", variant: "destructive" });
     }
@@ -72,7 +98,7 @@ export default function SalePOPage() {
                 <SelectTrigger><SelectValue placeholder="All suppliers" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">All Suppliers</SelectItem>
-                  {(suppliers as any[]).map((s) => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}
+                  {suppliers.map((s) => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -95,9 +121,27 @@ export default function SalePOPage() {
                 </span>
               )}
             </CardTitle>
-            <Button size="sm" variant="outline" onClick={() => window.print()}>
-              <Printer className="w-3 h-3 mr-1" />Print PO
-            </Button>
+            <div className="flex gap-2">
+              {poItems.length > 0 && !saved && (
+                <Button
+                  size="sm"
+                  onClick={handleSavePO}
+                  disabled={createPO.isPending}
+                  data-testid="button-save-po"
+                >
+                  {createPO.isPending ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Save className="w-3 h-3 mr-1" />}
+                  Save PO
+                </Button>
+              )}
+              {saved && (
+                <span className="text-xs text-green-600 font-medium flex items-center gap-1">
+                  <Save className="w-3 h-3" /> PO Saved
+                </span>
+              )}
+              <Button size="sm" variant="outline" onClick={() => window.print()}>
+                <Printer className="w-3 h-3 mr-1" />Print PO
+              </Button>
+            </div>
           </CardHeader>
           <CardContent className="p-0">
             <div className="overflow-x-auto">

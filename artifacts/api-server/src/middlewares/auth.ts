@@ -1,5 +1,8 @@
 import type { Request, Response, NextFunction } from "express";
+import { eq } from "drizzle-orm";
 import { verifyToken, type JwtPayload } from "../lib/jwt.js";
+import { db } from "../lib/db.js";
+import { usersTable } from "@workspace/db";
 
 declare global {
   namespace Express {
@@ -9,7 +12,7 @@ declare global {
   }
 }
 
-export function requireAuth(req: Request, res: Response, next: NextFunction) {
+export async function requireAuth(req: Request, res: Response, next: NextFunction) {
   const authHeader = req.headers["authorization"];
   if (!authHeader?.startsWith("Bearer ")) {
     res.status(401).json({ error: "Unauthorized" });
@@ -17,7 +20,17 @@ export function requireAuth(req: Request, res: Response, next: NextFunction) {
   }
   const token = authHeader.slice(7);
   try {
-    req.user = verifyToken(token);
+    const payload = verifyToken(token);
+    const [user] = await db
+      .select({ isActive: usersTable.isActive })
+      .from(usersTable)
+      .where(eq(usersTable.id, payload.userId))
+      .limit(1);
+    if (!user?.isActive) {
+      res.status(401).json({ error: "Account disabled" });
+      return;
+    }
+    req.user = payload;
     next();
   } catch {
     res.status(401).json({ error: "Invalid or expired token" });
@@ -32,10 +45,6 @@ export function requireAdmin(req: Request, res: Response, next: NextFunction) {
   next();
 }
 
-/**
- * Pharmacist (manager) or admin.
- * Cashiers cannot access purchase/inventory/settings routes.
- */
 export function requirePharmacist(req: Request, res: Response, next: NextFunction) {
   if (req.user?.role !== "admin" && req.user?.role !== "pharmacist") {
     res.status(403).json({ error: "Forbidden: pharmacist or admin role required" });

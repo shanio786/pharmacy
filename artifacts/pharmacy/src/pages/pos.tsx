@@ -428,7 +428,19 @@ export default function POSPage() {
                         <td className="px-2 py-2 text-center">
                           <Select
                             value={item.saleUnit}
-                            onValueChange={(v) => updateCartItem(idx, "saleUnit", v)}
+                            onValueChange={(v) => {
+                              const baseUnitPrice = item.saleUnit === "pack"
+                                ? item.salePrice / (item.conversionFactor || 1)
+                                : item.salePrice;
+                              const newPrice = v === "pack"
+                                ? baseUnitPrice * (item.conversionFactor || 1)
+                                : baseUnitPrice;
+                              setCart((prev) => {
+                                const updated = [...prev];
+                                updated[idx] = { ...updated[idx], saleUnit: v, salePrice: newPrice };
+                                return updated;
+                              });
+                            }}
                           >
                             <SelectTrigger className="h-6 text-xs w-16">
                               <SelectValue />

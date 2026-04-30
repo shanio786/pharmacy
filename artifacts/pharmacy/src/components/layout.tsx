@@ -43,15 +43,26 @@ import {
   Menu,
 } from "lucide-react";
 
+type Role = "admin" | "pharmacist" | "cashier";
+
 interface NavItem {
   label: string;
   icon: React.ComponentType<{ className?: string }>;
   href: string;
+  minRole?: Role;
 }
 
 interface NavGroup {
   label: string;
+  minRole?: Role;
   items: NavItem[];
+}
+
+const ROLE_RANK: Record<Role, number> = { cashier: 0, pharmacist: 1, admin: 2 };
+
+function hasAccess(userRole: string, minRole?: Role) {
+  if (!minRole) return true;
+  return (ROLE_RANK[userRole as Role] ?? 0) >= ROLE_RANK[minRole];
 }
 
 const navGroups: NavGroup[] = [
@@ -72,6 +83,7 @@ const navGroups: NavGroup[] = [
   },
   {
     label: "Purchases",
+    minRole: "pharmacist",
     items: [
       { label: "GRN / Purchase", icon: PackagePlus, href: "/purchases" },
       { label: "Purchase Returns", icon: Package, href: "/purchase-returns" },
@@ -80,6 +92,7 @@ const navGroups: NavGroup[] = [
   },
   {
     label: "Stock",
+    minRole: "pharmacist",
     items: [
       { label: "Medicines", icon: Pill, href: "/medicines" },
       { label: "Stock Audit", icon: ClipboardCheck, href: "/stock-audit" },
@@ -88,6 +101,7 @@ const navGroups: NavGroup[] = [
   },
   {
     label: "Ledger",
+    minRole: "pharmacist",
     items: [
       { label: "Suppliers", icon: Building2, href: "/suppliers" },
       { label: "Customers", icon: Users, href: "/customers" },
@@ -95,6 +109,7 @@ const navGroups: NavGroup[] = [
   },
   {
     label: "Reports",
+    minRole: "pharmacist",
     items: [
       { label: "Sales Report", icon: BarChart2, href: "/reports/sales" },
       { label: "Stock Report", icon: Boxes, href: "/reports/stock" },
@@ -106,9 +121,10 @@ const navGroups: NavGroup[] = [
   },
   {
     label: "Settings",
+    minRole: "pharmacist",
     items: [
       { label: "General Settings", icon: Settings, href: "/settings" },
-      { label: "User Management", icon: UserCog, href: "/settings/users" },
+      { label: "User Management", icon: UserCog, href: "/settings/users", minRole: "admin" },
       { label: "Masters", icon: Database, href: "/settings/masters" },
     ],
   },
@@ -148,35 +164,39 @@ export function Layout({ children }: { children: ReactNode }) {
 
         {/* Nav */}
         <nav className="flex-1 overflow-y-auto py-2 scrollbar-thin">
-          {navGroups.map((group) => (
-            <div key={group.label} className="mb-1">
-              {!collapsed && (
-                <p className="px-4 py-1.5 text-xs font-semibold text-sidebar-foreground/50 uppercase tracking-wider">
-                  {group.label}
-                </p>
-              )}
-              {group.items.map((item) => {
-                const Icon = item.icon;
-                const active = isActive(item.href);
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    data-testid={`nav-${item.href.replace(/\//g, "-")}`}
-                    className={cn(
-                      "flex items-center gap-3 px-4 py-2 mx-2 rounded-lg text-sm font-medium transition-colors",
-                      active
-                        ? "bg-white text-primary"
-                        : "text-sidebar-foreground/80 hover:bg-white/10 hover:text-sidebar-foreground"
-                    )}
-                  >
-                    <Icon className="w-4 h-4 flex-shrink-0" />
-                    {!collapsed && <span className="truncate">{item.label}</span>}
-                  </Link>
-                );
-              })}
-            </div>
-          ))}
+          {navGroups.filter((g) => hasAccess(user?.role ?? "cashier", g.minRole)).map((group) => {
+            const visibleItems = group.items.filter((i) => hasAccess(user?.role ?? "cashier", i.minRole));
+            if (!visibleItems.length) return null;
+            return (
+              <div key={group.label} className="mb-1">
+                {!collapsed && (
+                  <p className="px-4 py-1.5 text-xs font-semibold text-sidebar-foreground/50 uppercase tracking-wider">
+                    {group.label}
+                  </p>
+                )}
+                {visibleItems.map((item) => {
+                  const Icon = item.icon;
+                  const active = isActive(item.href);
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      data-testid={`nav-${item.href.replace(/\//g, "-")}`}
+                      className={cn(
+                        "flex items-center gap-3 px-4 py-2 mx-2 rounded-lg text-sm font-medium transition-colors",
+                        active
+                          ? "bg-white text-primary"
+                          : "text-sidebar-foreground/80 hover:bg-white/10 hover:text-sidebar-foreground"
+                      )}
+                    >
+                      <Icon className="w-4 h-4 flex-shrink-0" />
+                      {!collapsed && <span className="truncate">{item.label}</span>}
+                    </Link>
+                  );
+                })}
+              </div>
+            );
+          })}
         </nav>
 
         {/* Collapse button */}

@@ -593,6 +593,56 @@ export const insertStockAuditItemSchema = createInsertSchema(
 export type InsertStockAuditItem = z.infer<typeof insertStockAuditItemSchema>;
 export type StockAuditItem = typeof stockAuditItemsTable.$inferSelect;
 
+// ─── Purchase Orders ──────────────────────────────────────────────────────────
+
+export const purchaseOrderStatusEnum = pgEnum("purchase_order_status", [
+  "draft",
+  "sent",
+  "received",
+  "cancelled",
+]);
+
+export const purchaseOrdersTable = pgTable("purchase_orders", {
+  id: serial("id").primaryKey(),
+  supplierId: integer("supplier_id").references(() => suppliersTable.id),
+  status: purchaseOrderStatusEnum("status").notNull().default("draft"),
+  notes: text("notes"),
+  createdBy: integer("created_by").references(() => usersTable.id),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const purchaseOrderItemsTable = pgTable("purchase_order_items", {
+  id: serial("id").primaryKey(),
+  purchaseOrderId: integer("purchase_order_id")
+    .notNull()
+    .references(() => purchaseOrdersTable.id),
+  medicineId: integer("medicine_id")
+    .notNull()
+    .references(() => medicinesTable.id),
+  quantityPacks: integer("quantity_packs").notNull().default(0),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export type PurchaseOrder = typeof purchaseOrdersTable.$inferSelect;
+export type PurchaseOrderItem = typeof purchaseOrderItemsTable.$inferSelect;
+
+// ─── Activity Log ─────────────────────────────────────────────────────────────
+
+export const activityLogsTable = pgTable("activity_logs", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => usersTable.id),
+  action: text("action").notNull(),
+  entityType: text("entity_type"),
+  entityId: integer("entity_id"),
+  details: text("details"),
+  ipAddress: text("ip_address"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export type ActivityLog = typeof activityLogsTable.$inferSelect;
+
 // ─── Settings ─────────────────────────────────────────────────────────────────
 
 export const settingsTable = pgTable("settings", {

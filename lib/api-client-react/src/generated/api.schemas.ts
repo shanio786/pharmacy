@@ -876,3 +876,28 @@ export type GetProfitLossReportParams = {
   dateFrom: string;
   dateTo: string;
 };
+
+export interface PurchaseOrderItem {
+  id: number;
+  medicineId: number;
+  medicineName: string;
+  quantityPacks: number;
+  notes?: string | null;
+}
+
+export interface PurchaseOrder {
+  id: number;
+  supplierId?: number | null;
+  supplierName?: string | null;
+  status: "draft" | "sent" | "received" | "cancelled";
+  notes?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  items?: PurchaseOrderItem[];
+}
+
+export interface CreatePurchaseOrderBody {
+  supplierId?: number | null;
+  notes?: string | null;
+  items: Array<{ medicineId: number; quantityPacks: number; notes?: string | null }>;
+}
