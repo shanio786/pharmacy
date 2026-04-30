@@ -9,11 +9,10 @@ async function seed() {
   // 1. Admin user
   const existingUsers = await db.select().from(schema.usersTable).limit(1);
   if (!existingUsers.length) {
-    const adminPassword = process.env["ADMIN_PASSWORD"] ?? "admin123";
-    const managerPassword = process.env["MANAGER_PASSWORD"] ?? "manager123";
-    if (!process.env["ADMIN_PASSWORD"]) {
-      console.warn("WARNING: ADMIN_PASSWORD env var not set. Using default password 'admin123'. Change it immediately after first login in production.");
-    }
+    const { randomBytes } = await import("node:crypto");
+    const genPassword = () => randomBytes(12).toString("base64url").slice(0, 16);
+    const adminPassword = process.env["ADMIN_PASSWORD"] ?? genPassword();
+    const managerPassword = process.env["MANAGER_PASSWORD"] ?? genPassword();
     const passwordHash = await bcrypt.hash(adminPassword, 10);
     await db.insert(schema.usersTable).values({
       username: "admin",
@@ -30,7 +29,16 @@ async function seed() {
       role: "manager",
       isActive: true,
     });
-    console.log(`Created admin user (admin/${process.env["ADMIN_PASSWORD"] ? "***" : "admin123"}) and manager`);
+    if (!process.env["ADMIN_PASSWORD"]) {
+      console.log("=".repeat(60));
+      console.log("INITIAL CREDENTIALS (save these — shown only once):");
+      console.log(`  admin    password: ${adminPassword}`);
+      console.log(`  manager  password: ${managerPassword}`);
+      console.log("Set ADMIN_PASSWORD / MANAGER_PASSWORD env vars to control these.");
+      console.log("=".repeat(60));
+    } else {
+      console.log("Created admin and manager users from environment variables.");
+    }
   }
 
   // 2. Settings

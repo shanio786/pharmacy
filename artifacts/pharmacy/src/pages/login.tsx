@@ -99,7 +99,7 @@ export default function LoginPage() {
             </Button>
           </form>
           <p className="text-center text-xs text-muted-foreground mt-4">
-            Default: admin / admin123
+            Initial credentials are shown in the server log on first startup.
           </p>
         </CardContent>
       </Card>

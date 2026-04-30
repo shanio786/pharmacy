@@ -40,6 +40,14 @@ const queryClient = new QueryClient({
   },
 });
 
+function MgrRoute({ component: Page }: { component: React.ComponentType }) {
+  return <ProtectedRoute minRole="manager"><Page /></ProtectedRoute>;
+}
+
+function AdminRoute({ component: Page }: { component: React.ComponentType }) {
+  return <ProtectedRoute minRole="admin"><Page /></ProtectedRoute>;
+}
+
 function AppRouter() {
   return (
     <Switch>
@@ -53,23 +61,23 @@ function AppRouter() {
               <Route path="/sale-returns" component={SaleReturnsPage} />
               <Route path="/missed-sales" component={MissedSalesPage} />
               <Route path="/deliveries" component={DeliveriesPage} />
-              <Route path="/purchases" component={PurchasesPage} />
-              <Route path="/purchase-returns" component={PurchaseReturnsPage} />
-              <Route path="/sale-po" component={SalePOPage} />
-              <Route path="/medicines" component={MedicinesPage} />
-              <Route path="/stock-audit" component={StockAuditPage} />
-              <Route path="/expiry-alerts" component={ExpiryAlertsPage} />
-              <Route path="/suppliers" component={SuppliersPage} />
-              <Route path="/customers" component={CustomersPage} />
-              <Route path="/reports/sales" component={SalesReportPage} />
-              <Route path="/reports/stock" component={StockReportPage} />
-              <Route path="/reports/purchases" component={PurchaseReportPage} />
-              <Route path="/reports/expiry" component={ExpiryReportPage} />
-              <Route path="/reports/controlled" component={ControlledReportPage} />
-              <Route path="/reports/profit-loss" component={ProfitLossPage} />
-              <Route path="/settings" component={GeneralSettingsPage} />
-              <Route path="/settings/users" component={UserManagementPage} />
-              <Route path="/settings/masters" component={MastersPage} />
+              <Route path="/purchases">{() => <MgrRoute component={PurchasesPage} />}</Route>
+              <Route path="/purchase-returns">{() => <MgrRoute component={PurchaseReturnsPage} />}</Route>
+              <Route path="/sale-po">{() => <MgrRoute component={SalePOPage} />}</Route>
+              <Route path="/medicines">{() => <MgrRoute component={MedicinesPage} />}</Route>
+              <Route path="/stock-audit">{() => <MgrRoute component={StockAuditPage} />}</Route>
+              <Route path="/expiry-alerts">{() => <MgrRoute component={ExpiryAlertsPage} />}</Route>
+              <Route path="/suppliers">{() => <MgrRoute component={SuppliersPage} />}</Route>
+              <Route path="/customers">{() => <MgrRoute component={CustomersPage} />}</Route>
+              <Route path="/reports/sales">{() => <MgrRoute component={SalesReportPage} />}</Route>
+              <Route path="/reports/stock">{() => <MgrRoute component={StockReportPage} />}</Route>
+              <Route path="/reports/purchases">{() => <MgrRoute component={PurchaseReportPage} />}</Route>
+              <Route path="/reports/expiry">{() => <MgrRoute component={ExpiryReportPage} />}</Route>
+              <Route path="/reports/controlled">{() => <MgrRoute component={ControlledReportPage} />}</Route>
+              <Route path="/reports/profit-loss">{() => <MgrRoute component={ProfitLossPage} />}</Route>
+              <Route path="/settings">{() => <MgrRoute component={GeneralSettingsPage} />}</Route>
+              <Route path="/settings/users">{() => <AdminRoute component={UserManagementPage} />}</Route>
+              <Route path="/settings/masters">{() => <MgrRoute component={MastersPage} />}</Route>
               <Route component={NotFound} />
             </Switch>
           </Layout>
