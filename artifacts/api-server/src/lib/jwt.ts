@@ -1,12 +1,17 @@
 import jwt from "jsonwebtoken";
+import crypto from "crypto";
 
 const isDev = process.env["NODE_ENV"] !== "production";
 
 const JWT_SECRET = process.env["JWT_SECRET"] ??
-  (isDev ? "pharmacare-dev-only-not-for-production" : undefined);
+  (isDev ? crypto.randomBytes(32).toString("hex") : undefined);
 
 if (!JWT_SECRET) {
   throw new Error("JWT_SECRET environment variable is required in production");
+}
+
+if (isDev && !process.env["JWT_SECRET"]) {
+  console.warn("[auth] JWT_SECRET not set — using ephemeral random secret. All tokens reset on restart.");
 }
 
 const JWT_EXPIRES_IN = "24h";

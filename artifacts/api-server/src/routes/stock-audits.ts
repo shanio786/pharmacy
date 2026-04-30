@@ -29,6 +29,8 @@ router.post("/stock-audits", requireAuth, requireManager, async (req, res) => {
       batchId?: number;
       physicalCountPacks?: number;
       physicalCountUnits?: number;
+      physicalPacks?: number;
+      physicalUnits?: number;
     }>;
   };
 
@@ -60,8 +62,8 @@ router.post("/stock-audits", requireAuth, requireManager, async (req, res) => {
       systemCountUnits = batch?.quantityUnits ?? 0;
     }
 
-    const packs = item.physicalCountPacks ?? 0;
-    const units = item.physicalCountUnits ?? 0;
+    const packs = item.physicalCountPacks ?? item.physicalPacks ?? 0;
+    const units = item.physicalCountUnits ?? item.physicalUnits ?? 0;
     const physicalTotalUnits = Math.round(packs * cf) + units;
     const variance = physicalTotalUnits - systemCountUnits;
 

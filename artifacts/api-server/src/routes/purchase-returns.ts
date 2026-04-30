@@ -35,23 +35,41 @@ router.get("/purchase-returns", requireAuth, async (req, res) => {
 });
 
 router.post("/purchase-returns", requireAuth, requireManager, async (req, res) => {
-  const { purchaseId, supplierId, date, reason, notes, items } = req.body as {
+  const { purchaseId, supplierId, date, reason, notes, inPacks, items } = req.body as {
     purchaseId?: number;
     supplierId?: number;
     date: string;
     reason?: string;
     notes?: string;
+    inPacks?: boolean;
     items: Array<{
       medicineId: number;
       batchId?: number;
       batchNo?: string;
-      quantityUnits: number;
-      purchasePriceUnit: number;
+      returnQuantity?: number;
+      purchasePrice?: number;
+      quantityUnits?: number;
+      purchasePriceUnit?: number;
     }>;
   };
 
+  const normalizedItems = await Promise.all(items.map(async (item) => {
+    const qty = item.returnQuantity ?? item.quantityUnits ?? 0;
+    const pricePerUnit = item.purchasePrice ?? item.purchasePriceUnit ?? 0;
+    let quantityUnits = qty;
+    let purchasePriceUnit = pricePerUnit;
+    if (inPacks) {
+      const [med] = await db.select({ unitsPerPack: medicinesTable.unitsPerPack })
+        .from(medicinesTable).where(eq(medicinesTable.id, item.medicineId)).limit(1);
+      const cf = Number(med?.unitsPerPack ?? 1);
+      quantityUnits = qty * cf;
+      purchasePriceUnit = pricePerUnit / cf;
+    }
+    return { ...item, quantityUnits, purchasePriceUnit };
+  }));
+
   let totalAmount = 0;
-  for (const item of items) {
+  for (const item of normalizedItems) {
     totalAmount += item.quantityUnits * item.purchasePriceUnit;
   }
 
@@ -68,7 +86,7 @@ router.post("/purchase-returns", requireAuth, requireManager, async (req, res) =
     .returning();
 
   await db.insert(purchaseReturnItemsTable).values(
-    items.map((item) => ({
+    normalizedItems.map((item) => ({
       purchaseReturnId: ret.id,
       medicineId: item.medicineId,
       batchId: item.batchId,
@@ -79,7 +97,7 @@ router.post("/purchase-returns", requireAuth, requireManager, async (req, res) =
     }))
   );
 
-  for (const item of items) {
+  for (const item of normalizedItems) {
     if (item.batchId) {
       const [batch] = await db
         .select()

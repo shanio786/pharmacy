@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useListPurchaseReturns, useCreatePurchaseReturn, useListSuppliers, useListPurchases, useGetPurchase } from "@workspace/api-client-react";
-import type { CreatePurchaseReturnBody, CreatePurchaseReturnItemBody } from "@workspace/api-client-react";
+import type { CreatePurchaseReturnBody, CreatePurchaseReturnItemBody, PurchaseItem, PurchaseWithItems } from "@workspace/api-client-react";
+import type { UseQueryOptions } from "@tanstack/react-query";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +13,14 @@ import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Loader2, Trash2 } from "lucide-react";
 import { format } from "date-fns";
+
+interface ReturnItem {
+  medicineId: number;
+  medicineName: string;
+  batchId: number | null;
+  returnQuantity: number;
+  purchasePrice: number;
+}
 
 export default function PurchaseReturnsPage() {
   const { toast } = useToast();
@@ -26,7 +35,7 @@ export default function PurchaseReturnsPage() {
   const [date, setDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [notes, setNotes] = useState("");
   const [inPacks, setInPacks] = useState(false);
-  const [returnItems, setReturnItems] = useState<Array<{ medicineId: number; medicineName: string; batchId: number | null; returnQuantity: number; purchasePrice: number }>>([]);
+  const [returnItems, setReturnItems] = useState<ReturnItem[]>([]);
 
   const params = {
     supplierId: suppFilter !== "all" ? Number(suppFilter) : undefined,
@@ -37,13 +46,18 @@ export default function PurchaseReturnsPage() {
   const { data: purchaseReturns = [], isLoading } = useListPurchaseReturns(params);
   const { data: suppliers = [] } = useListSuppliers();
   const { data: purchases = [] } = useListPurchases({});
-  const { data: purchaseDetail } = useGetPurchase(Number(purchaseId), {
-    query: { enabled: !!purchaseId && !isNaN(Number(purchaseId)) } as any,
+  const purchaseIdNum = Number(purchaseId);
+  const purchaseQueryOpts: UseQueryOptions<PurchaseWithItems, unknown, PurchaseWithItems> = {
+    queryKey: ["purchase", purchaseIdNum],
+    enabled: !!purchaseId && !isNaN(purchaseIdNum) && purchaseIdNum > 0,
+  };
+  const { data: purchaseDetail } = useGetPurchase(purchaseIdNum, {
+    query: purchaseQueryOpts,
   });
   const createReturn = useCreatePurchaseReturn();
 
-  const addItem = (item: any) => {
-    const exists = returnItems.find((r) => r.medicineId === item.medicineId && r.batchId === item.batchId);
+  const addItem = (item: PurchaseItem) => {
+    const exists = returnItems.find((r) => r.medicineId === item.medicineId && r.batchId === (item.batchId ?? null));
     if (exists) return;
     setReturnItems((prev) => [...prev, {
       medicineId: item.medicineId,
@@ -108,7 +122,7 @@ export default function PurchaseReturnsPage() {
           <SelectTrigger className="w-44"><SelectValue placeholder="All Suppliers" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Suppliers</SelectItem>
-            {(suppliers as any[]).map((s) => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}
+            {suppliers.map((s) => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}
           </SelectContent>
         </Select>
         <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="w-36" />
@@ -130,10 +144,10 @@ export default function PurchaseReturnsPage() {
               <tbody>
                 {isLoading ? (
                   <tr><td colSpan={4} className="text-center py-8 text-muted-foreground">Loading...</td></tr>
-                ) : (purchaseReturns as any[]).length === 0 ? (
+                ) : purchaseReturns.length === 0 ? (
                   <tr><td colSpan={4} className="text-center py-8 text-muted-foreground">No purchase returns found</td></tr>
                 ) : (
-                  (purchaseReturns as any[]).map((r) => (
+                  purchaseReturns.map((r) => (
                     <tr key={r.id} className="border-b last:border-0 hover:bg-muted/20">
                       <td className="px-4 py-3">{r.date}</td>
                       <td className="px-4 py-3">{r.supplierName ?? "—"}</td>
@@ -162,7 +176,7 @@ export default function PurchaseReturnsPage() {
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">— None —</SelectItem>
-                  {(suppliers as any[]).map((s) => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}
+                  {suppliers.map((s) => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -176,7 +190,7 @@ export default function PurchaseReturnsPage() {
                 <SelectTrigger><SelectValue placeholder="Select GRN..." /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="">— None —</SelectItem>
-                  {(purchases as any[]).slice(0, 50).map((p) => (
+                  {purchases.slice(0, 50).map((p) => (
                     <SelectItem key={p.id} value={String(p.id)}>
                       {p.invoiceNo ?? `GRN-${p.id}`} — {p.date} — {p.supplierName}
                     </SelectItem>
@@ -194,7 +208,7 @@ export default function PurchaseReturnsPage() {
             </div>
           </div>
 
-          {purchaseDetail && (purchaseDetail as any).items?.length > 0 && (
+          {purchaseDetail && purchaseDetail.items?.length > 0 && (
             <div>
               <Label className="text-sm font-semibold">Purchase Items (click to add)</Label>
               <div className="mt-2 border rounded-lg overflow-hidden">
@@ -208,7 +222,7 @@ export default function PurchaseReturnsPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {(purchaseDetail as any).items.map((item: any) => (
+                    {purchaseDetail.items.map((item) => (
                       <tr key={item.id} className="border-b last:border-0">
                         <td className="px-3 py-2">{item.medicineName}</td>
                         <td className="px-3 py-2 text-muted-foreground">{item.batchNo}</td>

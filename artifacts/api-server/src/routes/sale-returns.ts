@@ -57,15 +57,31 @@ router.post("/sale-returns", requireAuth, requireManager, async (req, res) => {
       batchNo?: string;
       saleUnit?: string;
       quantityPacks?: number;
-      quantityUnits: number;
+      quantityUnits?: number;
+      quantity?: number;
       conversionFactor?: number;
       salePricePack?: number;
-      salePriceUnit: number;
+      salePriceUnit?: number;
+      salePrice?: number;
     }>;
   };
 
+  const normalizedItems = items.map((item) => {
+    const quantityUnits = item.quantityUnits ?? item.quantity ?? 0;
+    const salePriceUnit = item.salePriceUnit ?? item.salePrice ?? 0;
+    const cf = item.conversionFactor ?? 1;
+    const salePricePack = item.salePricePack ?? salePriceUnit * cf;
+    return {
+      ...item,
+      quantityUnits,
+      salePriceUnit,
+      conversionFactor: cf,
+      salePricePack,
+    };
+  });
+
   let totalAmount = 0;
-  for (const item of items) {
+  for (const item of normalizedItems) {
     totalAmount += item.quantityUnits * item.salePriceUnit;
   }
 
@@ -82,9 +98,7 @@ router.post("/sale-returns", requireAuth, requireManager, async (req, res) => {
     .returning();
 
   await db.insert(saleReturnItemsTable).values(
-    items.map((item) => {
-      const cf = item.conversionFactor ?? 1;
-      const pricePerPack = item.salePricePack ?? item.salePriceUnit * cf;
+    normalizedItems.map((item) => {
       return {
         saleReturnId: ret.id,
         medicineId: item.medicineId,
@@ -93,15 +107,15 @@ router.post("/sale-returns", requireAuth, requireManager, async (req, res) => {
         saleUnit: item.saleUnit ?? "unit",
         quantityPacks: String(item.quantityPacks ?? 0),
         quantityUnits: item.quantityUnits,
-        conversionFactor: cf,
-        salePricePack: String(pricePerPack),
+        conversionFactor: item.conversionFactor,
+        salePricePack: String(item.salePricePack),
         salePriceUnit: String(item.salePriceUnit),
         totalAmount: String(item.quantityUnits * item.salePriceUnit),
       };
     })
   );
 
-  for (const item of items) {
+  for (const item of normalizedItems) {
     if (item.batchId) {
       const [batch] = await db
         .select()

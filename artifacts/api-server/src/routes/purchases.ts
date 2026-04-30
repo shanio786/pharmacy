@@ -217,7 +217,7 @@ router.get("/purchases/:id", requireAuth, async (req, res) => {
     return;
   }
 
-  const items = await db
+  const rawItems = await db
     .select({
       id: purchaseItemsTable.id,
       medicineId: purchaseItemsTable.medicineId,
@@ -233,6 +233,15 @@ router.get("/purchases/:id", requireAuth, async (req, res) => {
     .from(purchaseItemsTable)
     .leftJoin(medicinesTable, eq(purchaseItemsTable.medicineId, medicinesTable.id))
     .where(eq(purchaseItemsTable.purchaseId, id));
+
+  const items = await Promise.all(rawItems.map(async (item) => {
+    const [batch] = await db
+      .select({ id: batchesTable.id })
+      .from(batchesTable)
+      .where(and(eq(batchesTable.medicineId, item.medicineId), eq(batchesTable.batchNo, item.batchNo)))
+      .limit(1);
+    return { ...item, batchId: batch?.id ?? null };
+  }));
 
   res.json({ ...purchase, items });
 });

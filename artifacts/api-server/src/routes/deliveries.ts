@@ -41,27 +41,30 @@ router.get("/deliveries", requireAuth, async (req, res) => {
 });
 
 router.post("/deliveries", requireAuth, async (req, res) => {
-  const {
-    customerId,
-    customerName,
-    phone,
-    address,
-    date,
-    totalAmount,
-    paidAmount,
-    notes,
-    saleId,
-  } = req.body as {
+  const body = req.body as {
     customerId?: number;
     customerName?: string;
     phone?: string;
-    address: string;
-    date: string;
+    address?: string;
+    deliveryAddress?: string;
+    date?: string;
+    scheduledDate?: string;
     totalAmount?: number;
     paidAmount?: number;
     notes?: string;
     saleId?: number;
   };
+  const {
+    customerId,
+    customerName,
+    phone,
+    totalAmount,
+    paidAmount,
+    notes,
+    saleId,
+  } = body;
+  const address = body.address ?? body.deliveryAddress;
+  const date = body.date ?? body.scheduledDate;
 
   if (!address) {
     res.status(400).json({ error: "Address is required" });

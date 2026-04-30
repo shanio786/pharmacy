@@ -318,6 +318,8 @@ export interface PurchaseItem {
   purchasePrice: number;
   salePrice: number;
   totalAmount: number;
+  /** @nullable */
+  batchId?: number | null;
 }
 
 export type PurchaseWithItems = Purchase & {
