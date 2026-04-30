@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { useGetPurchaseReport, useListSuppliers } from "@workspace/api-client-react";
+import { useGetPurchaseReport, useListSuppliers, getGetPurchaseReportQueryKey } from "@workspace/api-client-react";
+import type { PurchaseReport, PurchaseReportRow, Supplier } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,17 +15,24 @@ export default function PurchaseReportPage() {
   const [supplierId, setSupplierId] = useState("all");
   const [searched, setSearched] = useState(false);
 
-  const { data: report, isLoading, refetch } = useGetPurchaseReport(
-    { dateFrom, dateTo, supplierId: supplierId !== "all" ? Number(supplierId) : undefined },
-    { query: { enabled: searched } as any }
-  );
+  const params = {
+    dateFrom,
+    dateTo,
+    supplierId: supplierId !== "all" ? Number(supplierId) : undefined,
+  };
+
+  const { data: report, isLoading, refetch } = useGetPurchaseReport(params, {
+    query: {
+      queryKey: getGetPurchaseReportQueryKey(params),
+      enabled: searched,
+    },
+  });
   const { data: suppliers = [] } = useListSuppliers();
 
   const handleSearch = () => { setSearched(true); refetch(); };
 
-  const reportData = report as any;
-  const rows = reportData?.rows ?? [];
-  const summary = reportData?.summary;
+  const typedReport = report as PurchaseReport | undefined;
+  const rows = typedReport?.rows ?? [];
 
   return (
     <div className="space-y-4">
@@ -41,15 +49,23 @@ export default function PurchaseReportPage() {
       <Card>
         <CardContent className="pt-4">
           <div className="flex items-end gap-3 flex-wrap">
-            <div className="space-y-1"><Label>From</Label><Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="w-36" /></div>
-            <div className="space-y-1"><Label>To</Label><Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="w-36" /></div>
+            <div className="space-y-1">
+              <Label>From</Label>
+              <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="w-36" />
+            </div>
+            <div className="space-y-1">
+              <Label>To</Label>
+              <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="w-36" />
+            </div>
             <div className="space-y-1">
               <Label>Supplier</Label>
               <Select value={supplierId} onValueChange={setSupplierId}>
                 <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Suppliers</SelectItem>
-                  {(suppliers as any[]).map((s) => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}
+                  {(suppliers as Supplier[]).map((s) => (
+                    <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -60,12 +76,11 @@ export default function PurchaseReportPage() {
         </CardContent>
       </Card>
 
-      {summary && (
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+      {typedReport && (
+        <div className="grid grid-cols-2 md:grid-cols-2 gap-4">
           {[
-            { label: "Total Purchases", value: `PKR ${Number(summary.totalAmount).toLocaleString("en-PK", { maximumFractionDigits: 0 })}` },
-            { label: "Total GRNs", value: summary.totalGRNs },
-            { label: "Total Items", value: summary.totalItems },
+            { label: "Total Purchases", value: `PKR ${Number(typedReport.totalPurchases).toLocaleString("en-PK", { maximumFractionDigits: 0 })}` },
+            { label: "Total GRNs", value: typedReport.purchaseCount },
           ].map((kpi) => (
             <Card key={kpi.label}>
               <CardContent className="p-4">
@@ -91,24 +106,22 @@ export default function PurchaseReportPage() {
                   <th className="text-left px-4 py-3 font-medium text-muted-foreground">Date</th>
                   <th className="text-left px-4 py-3 font-medium text-muted-foreground">Invoice#</th>
                   <th className="text-left px-4 py-3 font-medium text-muted-foreground">Supplier</th>
-                  <th className="text-right px-4 py-3 font-medium text-muted-foreground">Items</th>
                   <th className="text-right px-4 py-3 font-medium text-muted-foreground">Amount (PKR)</th>
                 </tr>
               </thead>
               <tbody>
                 {isLoading ? (
-                  <tr><td colSpan={5} className="text-center py-8 text-muted-foreground">Loading...</td></tr>
+                  <tr><td colSpan={4} className="text-center py-8 text-muted-foreground">Loading...</td></tr>
                 ) : !searched ? (
-                  <tr><td colSpan={5} className="text-center py-8 text-muted-foreground">Set date range and click Generate</td></tr>
+                  <tr><td colSpan={4} className="text-center py-8 text-muted-foreground">Set date range and click Generate</td></tr>
                 ) : rows.length === 0 ? (
-                  <tr><td colSpan={5} className="text-center py-8 text-muted-foreground">No data for this period</td></tr>
+                  <tr><td colSpan={4} className="text-center py-8 text-muted-foreground">No data for this period</td></tr>
                 ) : (
-                  rows.map((row: any) => (
-                    <tr key={row.id} className="border-b last:border-0 hover:bg-muted/20">
+                  (rows as PurchaseReportRow[]).map((row, i) => (
+                    <tr key={i} className="border-b last:border-0 hover:bg-muted/20">
                       <td className="px-4 py-3">{row.date}</td>
                       <td className="px-4 py-3 font-mono text-xs">{row.invoiceNo ?? "—"}</td>
                       <td className="px-4 py-3">{row.supplierName ?? "Direct"}</td>
-                      <td className="px-4 py-3 text-right">{row.itemCount}</td>
                       <td className="px-4 py-3 text-right font-medium">{Number(row.totalAmount).toLocaleString("en-PK", { maximumFractionDigits: 0 })}</td>
                     </tr>
                   ))

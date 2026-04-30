@@ -16,12 +16,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Edit, Trash2, Loader2 } from "lucide-react";
 
+type MasterItem = { id: number; [key: string]: unknown };
+
 interface MasterTableProps {
   title: string;
-  items: any[];
+  items: MasterItem[];
   isLoading: boolean;
   onAdd: () => void;
-  onEdit: (item: any) => void;
+  onEdit: (item: MasterItem) => void;
   onDelete: (id: number) => void;
   columns?: Array<{ key: string; label: string }>;
 }
@@ -55,7 +57,7 @@ function MasterTable({ title, items, isLoading, onAdd, onEdit, onDelete, columns
                 items.map((item) => (
                   <tr key={item.id} className="border-b last:border-0 hover:bg-muted/20">
                     {columns.map((col) => (
-                      <td key={col.key} className="px-4 py-2.5">{item[col.key] ?? "—"}</td>
+                      <td key={col.key} className="px-4 py-2.5">{String(item[col.key] ?? "—")}</td>
                     ))}
                     <td className="px-4 py-2.5">
                       <div className="flex gap-1">
@@ -120,7 +122,14 @@ function MasterEditDialog({ open, onOpenChange, title, fields, form, setForm, on
   );
 }
 
-function useMasterCRUD(createHook: any, updateHook: any, deleteHook: any, fields: string[]) {
+type AnyHook = () => { mutateAsync: (args: Record<string, unknown>) => Promise<unknown>; isPending: boolean };
+
+function useMasterCRUD(
+  createHook: AnyHook,
+  updateHook: AnyHook,
+  deleteHook: AnyHook,
+  fields: string[]
+) {
   const { toast } = useToast();
   const qc = useQueryClient();
   const [showDialog, setShowDialog] = useState(false);
@@ -131,7 +140,7 @@ function useMasterCRUD(createHook: any, updateHook: any, deleteHook: any, fields
   const deleteMutation = deleteHook();
 
   const openAdd = () => { setForm(Object.fromEntries(fields.map((f) => [f, ""]))); setShowDialog(true); };
-  const openEdit = (item: any) => {
+  const openEdit = (item: MasterItem) => {
     setForm({ _id: String(item.id), ...Object.fromEntries(fields.map((f) => [f, String(item[f] ?? "")])) });
     setShowDialog(true);
   };
@@ -148,7 +157,7 @@ function useMasterCRUD(createHook: any, updateHook: any, deleteHook: any, fields
       }
       setShowDialog(false);
       qc.invalidateQueries();
-    } catch (err: any) { toast({ title: "Error", description: err?.message, variant: "destructive" }); }
+    } catch (err: unknown) { toast({ title: "Error", description: err instanceof Error ? err.message : "Request failed", variant: "destructive" }); }
   };
 
   const handleDelete = async (id: number) => {
@@ -157,7 +166,7 @@ function useMasterCRUD(createHook: any, updateHook: any, deleteHook: any, fields
       await deleteMutation.mutateAsync({ id });
       toast({ title: "Deleted" });
       qc.invalidateQueries();
-    } catch (err: any) { toast({ title: "Error", description: err?.message, variant: "destructive" }); }
+    } catch (err: unknown) { toast({ title: "Error", description: err instanceof Error ? err.message : "Request failed", variant: "destructive" }); }
   };
 
   return { showDialog, setShowDialog, form, setForm, openAdd, openEdit, handleSave, handleDelete, isPending: createMutation.isPending || updateMutation.isPending };
@@ -198,7 +207,7 @@ export default function MastersPage() {
         <TabsContent value="categories" className="mt-4">
           <MasterTable
             title="Category"
-            items={categories as any[]}
+            items={(categories as unknown as MasterItem[]) ?? []}
             isLoading={loadingCat}
             onAdd={catCRUD.openAdd}
             onEdit={catCRUD.openEdit}
@@ -211,7 +220,7 @@ export default function MastersPage() {
         <TabsContent value="companies" className="mt-4">
           <MasterTable
             title="Company"
-            items={companies as any[]}
+            items={(companies as unknown as MasterItem[]) ?? []}
             isLoading={loadingComp}
             onAdd={compCRUD.openAdd}
             onEdit={compCRUD.openEdit}
@@ -224,7 +233,7 @@ export default function MastersPage() {
         <TabsContent value="units" className="mt-4">
           <MasterTable
             title="Unit"
-            items={units as any[]}
+            items={(units as unknown as MasterItem[]) ?? []}
             isLoading={loadingUnits}
             onAdd={unitCRUD.openAdd}
             onEdit={unitCRUD.openEdit}
@@ -237,7 +246,7 @@ export default function MastersPage() {
         <TabsContent value="racks" className="mt-4">
           <MasterTable
             title="Rack"
-            items={racks as any[]}
+            items={(racks as unknown as MasterItem[]) ?? []}
             isLoading={loadingRacks}
             onAdd={rackCRUD.openAdd}
             onEdit={rackCRUD.openEdit}
@@ -250,7 +259,7 @@ export default function MastersPage() {
         <TabsContent value="generics" className="mt-4">
           <MasterTable
             title="Generic Name"
-            items={generics as any[]}
+            items={(generics as unknown as MasterItem[]) ?? []}
             isLoading={loadingGen}
             onAdd={genCRUD.openAdd}
             onEdit={genCRUD.openEdit}

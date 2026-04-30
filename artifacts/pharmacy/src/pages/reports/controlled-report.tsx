@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { useGetControlledDrugsReport } from "@workspace/api-client-react";
+import { useGetControlledDrugsReport, getGetControlledDrugsReportQueryKey } from "@workspace/api-client-react";
+import type { ControlledDrugEntry } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,14 +14,18 @@ export default function ControlledReportPage() {
   const [dateTo, setDateTo] = useState(format(new Date(), "yyyy-MM-dd"));
   const [searched, setSearched] = useState(false);
 
-  const { data: report, isLoading, refetch } = useGetControlledDrugsReport(
-    { dateFrom, dateTo },
-    { query: { enabled: searched } as any }
-  );
+  const params = { dateFrom, dateTo };
+
+  const { data: report, isLoading, refetch } = useGetControlledDrugsReport(params, {
+    query: {
+      queryKey: getGetControlledDrugsReportQueryKey(params),
+      enabled: searched,
+    },
+  });
 
   const handleSearch = () => { setSearched(true); refetch(); };
 
-  const rows = (report as any)?.rows ?? [];
+  const rows = (report ?? []) as ControlledDrugEntry[];
 
   return (
     <div className="space-y-4">
@@ -37,8 +42,14 @@ export default function ControlledReportPage() {
       <Card>
         <CardContent className="pt-4">
           <div className="flex items-end gap-3 flex-wrap">
-            <div className="space-y-1"><Label>From</Label><Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="w-36" /></div>
-            <div className="space-y-1"><Label>To</Label><Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="w-36" /></div>
+            <div className="space-y-1">
+              <Label>From</Label>
+              <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="w-36" />
+            </div>
+            <div className="space-y-1">
+              <Label>To</Label>
+              <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="w-36" />
+            </div>
             <Button onClick={handleSearch} data-testid="button-controlled-report-generate">
               <Search className="w-4 h-4 mr-2" />Generate
             </Button>
@@ -62,8 +73,8 @@ export default function ControlledReportPage() {
                   <th className="text-left px-4 py-3 font-medium text-muted-foreground">Invoice#</th>
                   <th className="text-left px-4 py-3 font-medium text-muted-foreground">Medicine</th>
                   <th className="text-left px-4 py-3 font-medium text-muted-foreground">Customer</th>
+                  <th className="text-left px-4 py-3 font-medium text-muted-foreground">Type</th>
                   <th className="text-center px-4 py-3 font-medium text-muted-foreground">Qty</th>
-                  <th className="text-left px-4 py-3 font-medium text-muted-foreground">Batch#</th>
                   <th className="text-left px-4 py-3 font-medium text-muted-foreground">Prescription Note</th>
                 </tr>
               </thead>
@@ -75,17 +86,17 @@ export default function ControlledReportPage() {
                 ) : rows.length === 0 ? (
                   <tr><td colSpan={7} className="text-center py-8 text-muted-foreground">No controlled drug sales in this period</td></tr>
                 ) : (
-                  rows.map((row: any, i: number) => (
+                  rows.map((row, i) => (
                     <tr key={i} className="border-b last:border-0 hover:bg-muted/20">
                       <td className="px-4 py-3">{row.date}</td>
-                      <td className="px-4 py-3 font-mono text-xs">{row.invoiceNo}</td>
+                      <td className="px-4 py-3 font-mono text-xs">{row.invoiceNo ?? "—"}</td>
                       <td className="px-4 py-3 font-medium">
                         {row.medicineName}
                         <Badge variant="destructive" className="ml-2 text-xs">Ctrl</Badge>
                       </td>
                       <td className="px-4 py-3">{row.customerName ?? "Walk-in"}</td>
-                      <td className="px-4 py-3 text-center font-medium">{row.quantity} {row.saleUnit}</td>
-                      <td className="px-4 py-3 font-mono text-xs">{row.batchNo ?? "—"}</td>
+                      <td className="px-4 py-3 capitalize text-muted-foreground">{row.transactionType}</td>
+                      <td className="px-4 py-3 text-center font-medium">{row.quantity}</td>
                       <td className="px-4 py-3 text-muted-foreground">{row.prescriptionNote ?? "—"}</td>
                     </tr>
                   ))

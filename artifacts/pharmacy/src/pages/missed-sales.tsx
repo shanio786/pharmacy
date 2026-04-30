@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useListMissedSales, useCreateMissedSale, useDeleteMissedSale } from "@workspace/api-client-react";
-import type { CreateMissedSaleBody } from "@workspace/api-client-react";
+import type { CreateMissedSaleBody, MissedSale } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -83,7 +83,7 @@ export default function MissedSalesPage() {
               <tbody>
                 {isLoading ? (
                   <tr><td colSpan={6} className="text-center py-8 text-muted-foreground">Loading...</td></tr>
-                ) : (missedSales as any[]).length === 0 ? (
+                ) : (missedSales as MissedSale[]).length === 0 ? (
                   <tr>
                     <td colSpan={6} className="text-center py-12">
                       <AlertCircle className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
@@ -91,7 +91,7 @@ export default function MissedSalesPage() {
                     </td>
                   </tr>
                 ) : (
-                  (missedSales as any[]).map((m) => (
+                  (missedSales as MissedSale[]).map((m) => (
                     <tr key={m.id} className="border-b last:border-0 hover:bg-muted/20">
                       <td className="px-4 py-3">{m.date}</td>
                       <td className="px-4 py-3 font-medium">{m.medicineName}</td>

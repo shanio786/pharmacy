@@ -1,29 +1,31 @@
 import { useState } from "react";
-import { useGetSalesReport } from "@workspace/api-client-react";
+import { useGetSalesReport, getGetSalesReportQueryKey } from "@workspace/api-client-react";
+import type { SalesReport, SalesReportRow } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Printer, Search, BarChart2 } from "lucide-react";
 import { format, subDays } from "date-fns";
 
 export default function SalesReportPage() {
   const [dateFrom, setDateFrom] = useState(format(subDays(new Date(), 30), "yyyy-MM-dd"));
   const [dateTo, setDateTo] = useState(format(new Date(), "yyyy-MM-dd"));
-  const [groupBy, setGroupBy] = useState("day");
   const [searched, setSearched] = useState(false);
 
-  const { data: report, isLoading, refetch } = useGetSalesReport(
-    { dateFrom, dateTo, groupBy },
-    { query: { enabled: searched } as any }
-  );
+  const params = { dateFrom, dateTo };
+
+  const { data: report, isLoading, refetch } = useGetSalesReport(params, {
+    query: {
+      queryKey: getGetSalesReportQueryKey(params),
+      enabled: searched,
+    },
+  });
 
   const handleSearch = () => { setSearched(true); refetch(); };
 
-  const reportData = report as any;
-  const summary = reportData?.summary;
-  const rows = reportData?.rows ?? [];
+  const typedReport = report as SalesReport | undefined;
+  const rows = typedReport?.rows ?? [];
 
   return (
     <div className="space-y-4">
@@ -48,17 +50,6 @@ export default function SalesReportPage() {
               <Label>To</Label>
               <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="w-36" />
             </div>
-            <div className="space-y-1">
-              <Label>Group By</Label>
-              <Select value={groupBy} onValueChange={setGroupBy}>
-                <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="day">Day</SelectItem>
-                  <SelectItem value="medicine">Medicine</SelectItem>
-                  <SelectItem value="customer">Customer</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
             <Button onClick={handleSearch} data-testid="button-sales-report-search">
               <Search className="w-4 h-4 mr-2" />Generate
             </Button>
@@ -66,13 +57,13 @@ export default function SalesReportPage() {
         </CardContent>
       </Card>
 
-      {summary && (
+      {typedReport && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {[
-            { label: "Total Revenue", value: `PKR ${Number(summary.totalRevenue).toLocaleString("en-PK", { maximumFractionDigits: 0 })}` },
-            { label: "Total Invoices", value: summary.totalInvoices },
-            { label: "Total Discount", value: `PKR ${Number(summary.totalDiscount).toLocaleString("en-PK", { maximumFractionDigits: 0 })}` },
-            { label: "Avg. Sale Value", value: `PKR ${Number(summary.avgSaleValue).toLocaleString("en-PK", { maximumFractionDigits: 0 })}` },
+            { label: "Total Sales", value: `PKR ${Number(typedReport.totalSales).toLocaleString("en-PK", { maximumFractionDigits: 0 })}` },
+            { label: "Net Sales", value: `PKR ${Number(typedReport.netSales).toLocaleString("en-PK", { maximumFractionDigits: 0 })}` },
+            { label: "Invoices", value: typedReport.saleCount },
+            { label: "Total Discount", value: `PKR ${Number(typedReport.totalDiscount).toLocaleString("en-PK", { maximumFractionDigits: 0 })}` },
           ].map((kpi) => (
             <Card key={kpi.label}>
               <CardContent className="p-4">
@@ -96,28 +87,30 @@ export default function SalesReportPage() {
             <table className="w-full text-sm">
               <thead className="border-b bg-muted/30">
                 <tr>
-                  <th className="text-left px-4 py-3 font-medium text-muted-foreground">{groupBy === "day" ? "Date" : groupBy === "medicine" ? "Medicine" : "Customer"}</th>
-                  <th className="text-right px-4 py-3 font-medium text-muted-foreground">Qty Sold</th>
-                  <th className="text-right px-4 py-3 font-medium text-muted-foreground">Revenue (PKR)</th>
-                  <th className="text-right px-4 py-3 font-medium text-muted-foreground">Discount (PKR)</th>
-                  <th className="text-right px-4 py-3 font-medium text-muted-foreground">Net (PKR)</th>
+                  <th className="text-left px-4 py-3 font-medium text-muted-foreground">Date</th>
+                  <th className="text-left px-4 py-3 font-medium text-muted-foreground">Invoice#</th>
+                  <th className="text-left px-4 py-3 font-medium text-muted-foreground">Customer</th>
+                  <th className="text-left px-4 py-3 font-medium text-muted-foreground">Payment</th>
+                  <th className="text-right px-4 py-3 font-medium text-muted-foreground">Amount (PKR)</th>
+                  <th className="text-right px-4 py-3 font-medium text-muted-foreground">Discount</th>
                 </tr>
               </thead>
               <tbody>
                 {isLoading ? (
-                  <tr><td colSpan={5} className="text-center py-8 text-muted-foreground">Loading...</td></tr>
+                  <tr><td colSpan={6} className="text-center py-8 text-muted-foreground">Loading...</td></tr>
                 ) : !searched ? (
-                  <tr><td colSpan={5} className="text-center py-8 text-muted-foreground">Set date range and click Generate</td></tr>
+                  <tr><td colSpan={6} className="text-center py-8 text-muted-foreground">Set date range and click Generate</td></tr>
                 ) : rows.length === 0 ? (
-                  <tr><td colSpan={5} className="text-center py-8 text-muted-foreground">No data for this period</td></tr>
+                  <tr><td colSpan={6} className="text-center py-8 text-muted-foreground">No data for this period</td></tr>
                 ) : (
-                  rows.map((row: any, i: number) => (
+                  (rows as SalesReportRow[]).map((row, i) => (
                     <tr key={i} className="border-b last:border-0 hover:bg-muted/20">
-                      <td className="px-4 py-3 font-medium">{row.label}</td>
-                      <td className="px-4 py-3 text-right">{row.qtySold ?? "—"}</td>
-                      <td className="px-4 py-3 text-right">{Number(row.revenue).toLocaleString("en-PK", { maximumFractionDigits: 0 })}</td>
-                      <td className="px-4 py-3 text-right text-destructive">{Number(row.discount).toLocaleString("en-PK", { maximumFractionDigits: 0 })}</td>
-                      <td className="px-4 py-3 text-right font-medium text-primary">{Number(row.net).toLocaleString("en-PK", { maximumFractionDigits: 0 })}</td>
+                      <td className="px-4 py-3">{row.date}</td>
+                      <td className="px-4 py-3 font-mono text-xs">{row.invoiceNo}</td>
+                      <td className="px-4 py-3">{row.customerName ?? "Walk-in"}</td>
+                      <td className="px-4 py-3 text-muted-foreground capitalize">{row.paymentMode}</td>
+                      <td className="px-4 py-3 text-right font-medium">{Number(row.totalAmount).toLocaleString("en-PK", { maximumFractionDigits: 0 })}</td>
+                      <td className="px-4 py-3 text-right text-destructive">{Number(row.discountAmount).toLocaleString("en-PK", { maximumFractionDigits: 0 })}</td>
                     </tr>
                   ))
                 )}

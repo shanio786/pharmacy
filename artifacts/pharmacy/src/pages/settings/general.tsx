@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useGetSettings, useUpdateSettings } from "@workspace/api-client-react";
-import type { UpdateSettingsBody } from "@workspace/api-client-react";
+import type { UpdateSettingsBody, Settings as SettingsData } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,7 +35,7 @@ export default function GeneralSettingsPage() {
 
   useEffect(() => {
     if (settings) {
-      const s = settings as any;
+      const s = settings as SettingsData;
       setForm({
         pharmacyName: s.pharmacyName ?? "PharmaCare",
         address: s.address ?? null,
@@ -62,8 +62,8 @@ export default function GeneralSettingsPage() {
       await updateSettings.mutateAsync({ data: form });
       toast({ title: "Settings saved" });
       qc.invalidateQueries();
-    } catch (err: any) {
-      toast({ title: "Error", description: err?.message, variant: "destructive" });
+    } catch (err: unknown) {
+      toast({ title: "Error", description: err instanceof Error ? err.message : "Request failed", variant: "destructive" });
     }
   };
 

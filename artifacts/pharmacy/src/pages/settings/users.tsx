@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useListUsers, useCreateUser, useUpdateUser, useDeleteUser } from "@workspace/api-client-react";
-import type { CreateUserBody } from "@workspace/api-client-react";
+import type { CreateUserBody, User } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,7 +27,7 @@ export default function UserManagementPage() {
   const { toast } = useToast();
   const qc = useQueryClient();
   const [showDialog, setShowDialog] = useState(false);
-  const [editItem, setEditItem] = useState<any>(null);
+  const [editItem, setEditItem] = useState<User | null>(null);
   const [form, setForm] = useState<UserForm>({ username: "", password: "", fullName: "", role: "pharmacist", isActive: true });
 
   const { data: users = [], isLoading } = useListUsers();
@@ -36,7 +36,7 @@ export default function UserManagementPage() {
   const deleteUser = useDeleteUser();
 
   const openCreate = () => { setEditItem(null); setForm({ username: "", password: "", fullName: "", role: "pharmacist", isActive: true }); setShowDialog(true); };
-  const openEdit = (u: any) => {
+  const openEdit = (u: User) => {
     setEditItem(u);
     setForm({ username: u.username, password: "", fullName: u.fullName, role: u.role, isActive: u.isActive });
     setShowDialog(true);
@@ -56,7 +56,7 @@ export default function UserManagementPage() {
       }
       setShowDialog(false);
       qc.invalidateQueries();
-    } catch (err: any) { toast({ title: "Error", description: err?.message, variant: "destructive" }); }
+    } catch (err: unknown) { toast({ title: "Error", description: err instanceof Error ? err.message : "Request failed", variant: "destructive" }); }
   };
 
   const handleDelete = async (id: number) => {
@@ -65,7 +65,7 @@ export default function UserManagementPage() {
       await deleteUser.mutateAsync({ id });
       toast({ title: "User deleted" });
       qc.invalidateQueries();
-    } catch (err: any) { toast({ title: "Error", description: err?.message, variant: "destructive" }); }
+    } catch (err: unknown) { toast({ title: "Error", description: err instanceof Error ? err.message : "Request failed", variant: "destructive" }); }
   };
 
   return (
@@ -96,10 +96,10 @@ export default function UserManagementPage() {
               <tbody>
                 {isLoading ? (
                   <tr><td colSpan={5} className="text-center py-8 text-muted-foreground">Loading...</td></tr>
-                ) : (users as any[]).length === 0 ? (
+                ) : (users as User[]).length === 0 ? (
                   <tr><td colSpan={5} className="text-center py-8 text-muted-foreground">No users found</td></tr>
                 ) : (
-                  (users as any[]).map((u) => (
+                  (users as User[]).map((u) => (
                     <tr key={u.id} className="border-b last:border-0 hover:bg-muted/20">
                       <td className="px-4 py-3 font-mono text-sm">{u.username}</td>
                       <td className="px-4 py-3 font-medium">{u.fullName}</td>
