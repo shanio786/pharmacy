@@ -41,7 +41,7 @@ export default function CustomersPage() {
   const { data: ledger } = useGetCustomerLedger(
     ledgerCustomer?.id ?? 0,
     {},
-    { query: { enabled: !!ledgerCustomer } }
+    { query: { enabled: !!ledgerCustomer } as any }
   );
   const createCustomer = useCreateCustomer();
   const updateCustomer = useUpdateCustomer();
@@ -86,7 +86,7 @@ export default function CustomersPage() {
   const handleReceive = async () => {
     if (!ledgerCustomer || recvAmount <= 0) { toast({ title: "Enter a valid amount", variant: "destructive" }); return; }
     try {
-      await receivePayment.mutateAsync({ id: ledgerCustomer.id, data: { amount: recvAmount, date: recvDate, notes: recvNote || null } });
+      await receivePayment.mutateAsync({ id: ledgerCustomer.id, data: { amount: recvAmount, date: recvDate, note: recvNote || null } });
       toast({ title: "Payment received" });
       setShowReceive(false);
       qc.invalidateQueries();

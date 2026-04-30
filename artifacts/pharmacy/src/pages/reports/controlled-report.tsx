@@ -15,7 +15,7 @@ export default function ControlledReportPage() {
 
   const { data: report, isLoading, refetch } = useGetControlledDrugsReport(
     { dateFrom, dateTo },
-    { query: { enabled: searched } }
+    { query: { enabled: searched } as any }
   );
 
   const handleSearch = () => { setSearched(true); refetch(); };

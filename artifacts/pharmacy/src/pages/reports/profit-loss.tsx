@@ -15,7 +15,7 @@ export default function ProfitLossPage() {
 
   const { data: report, isLoading, refetch } = useGetProfitLossReport(
     { dateFrom, dateTo },
-    { query: { enabled: searched } }
+    { query: { enabled: searched } as any }
   );
 
   const handleSearch = () => { setSearched(true); refetch(); };

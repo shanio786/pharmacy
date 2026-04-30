@@ -43,7 +43,7 @@ export default function SuppliersPage() {
   const { data: ledger } = useGetSupplierLedger(
     ledgerSupplier?.id ?? 0,
     {},
-    { query: { enabled: !!ledgerSupplier } }
+    { query: { enabled: !!ledgerSupplier } as any }
   );
   const createSupplier = useCreateSupplier();
   const updateSupplier = useUpdateSupplier();
@@ -88,7 +88,7 @@ export default function SuppliersPage() {
   const handlePay = async () => {
     if (!ledgerSupplier || payAmount <= 0) { toast({ title: "Enter a valid amount", variant: "destructive" }); return; }
     try {
-      await paySupplier.mutateAsync({ id: ledgerSupplier.id, data: { amount: payAmount, date: payDate, notes: payNote || null } });
+      await paySupplier.mutateAsync({ id: ledgerSupplier.id, data: { amount: payAmount, date: payDate, note: payNote || null } });
       toast({ title: "Payment recorded" });
       setShowPayment(false);
       qc.invalidateQueries();

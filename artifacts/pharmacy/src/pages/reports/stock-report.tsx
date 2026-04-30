@@ -20,7 +20,7 @@ export default function StockReportPage() {
       companyId: companyId !== "all" ? Number(companyId) : undefined,
       showPackQty: showPacks,
     },
-    { query: { enabled: searched } }
+    { query: { enabled: searched } as any }
   );
   const { data: categories = [] } = useListCategories();
   const { data: companies = [] } = useListCompanies();

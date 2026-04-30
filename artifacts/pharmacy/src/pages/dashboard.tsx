@@ -1,4 +1,4 @@
-import { useGetDashboardSummary, useGetSalesChart, getGetDashboardSummaryQueryKey, getGetSalesChartQueryKey } from "@workspace/api-client-react";
+import { useGetDashboardSummary, useGetSalesChart, useGetExpiringMedicines, useGetLowStockMedicines } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
@@ -42,13 +42,10 @@ function KpiCard({
 }
 
 export default function DashboardPage() {
-  const { data: summary, isLoading } = useGetDashboardSummary({
-    query: { queryKey: getGetDashboardSummaryQueryKey() },
-  });
-  const { data: salesChart, isLoading: chartLoading } = useGetSalesChart(
-    { days: "30" },
-    { query: { queryKey: getGetSalesChartQueryKey({ days: "30" }) } }
-  );
+  const { data: summary, isLoading } = useGetDashboardSummary();
+  const { data: salesChart, isLoading: chartLoading } = useGetSalesChart({ days: 30 });
+  const { data: expiringItems = [], isLoading: expiryLoading } = useGetExpiringMedicines({ days: 90 });
+  const { data: lowStockItems = [], isLoading: lowLoading } = useGetLowStockMedicines();
 
   const formatCurrency = (v: number) =>
     `PKR ${Number(v).toLocaleString("en-PK", { maximumFractionDigits: 0 })}`;
@@ -92,7 +89,7 @@ export default function DashboardPage() {
         />
         <KpiCard
           title="Expiring Soon"
-          value={isLoading ? "..." : String(summary?.expiringSoonCount ?? 0)}
+          value={isLoading ? "..." : String(summary?.expiringCount ?? 0)}
           icon={Clock}
           color="bg-red-500"
           isLoading={isLoading}
@@ -112,7 +109,7 @@ export default function DashboardPage() {
             <Skeleton className="h-52 w-full" />
           ) : (
             <ResponsiveContainer width="100%" height={200}>
-              <BarChart data={salesChart ?? []}>
+              <BarChart data={(salesChart as any[]) ?? []}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                 <XAxis
                   dataKey="date"
@@ -124,7 +121,7 @@ export default function DashboardPage() {
                   formatter={(v: number) => [`PKR ${Number(v).toLocaleString()}`, "Sales"]}
                   labelFormatter={(l) => `Date: ${l}`}
                 />
-                <Bar dataKey="total" fill="hsl(142 70% 38%)" radius={[3, 3, 0, 0]} />
+                <Bar dataKey="amount" fill="hsl(142 70% 38%)" radius={[3, 3, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           )}
@@ -138,11 +135,11 @@ export default function DashboardPage() {
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2">
               <Clock className="w-4 h-4 text-red-500" />
-              Expiring Soon
+              Expiring Soon (90 days)
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0">
-            {isLoading ? (
+            {expiryLoading ? (
               <div className="p-4 space-y-2">
                 {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-8 w-full" />)}
               </div>
@@ -157,12 +154,12 @@ export default function DashboardPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {(summary?.expiringSoon ?? []).slice(0, 8).map((item: any) => {
+                    {(expiringItems as any[]).slice(0, 8).map((item: any, idx: number) => {
                       const daysLeft = Math.ceil(
                         (new Date(item.expiryDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
                       );
                       return (
-                        <tr key={item.id} className="border-b last:border-0 hover:bg-muted/30">
+                        <tr key={idx} className="border-b last:border-0 hover:bg-muted/30">
                           <td className="px-4 py-2 font-medium truncate max-w-[140px]">{item.medicineName}</td>
                           <td className="px-4 py-2">
                             <Badge
@@ -176,7 +173,7 @@ export default function DashboardPage() {
                         </tr>
                       );
                     })}
-                    {(summary?.expiringSoon ?? []).length === 0 && (
+                    {(expiringItems as any[]).length === 0 && (
                       <tr><td colSpan={3} className="px-4 py-6 text-center text-muted-foreground">No medicines expiring soon</td></tr>
                     )}
                   </tbody>
@@ -195,7 +192,7 @@ export default function DashboardPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0">
-            {isLoading ? (
+            {lowLoading ? (
               <div className="p-4 space-y-2">
                 {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-8 w-full" />)}
               </div>
@@ -209,17 +206,17 @@ export default function DashboardPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {(summary?.lowStockItems ?? []).slice(0, 8).map((item: any) => (
-                      <tr key={item.medicineId} className="border-b last:border-0 hover:bg-muted/30">
-                        <td className="px-4 py-2 font-medium truncate max-w-[200px]">{item.medicineName}</td>
+                    {(lowStockItems as any[]).slice(0, 8).map((item: any, idx: number) => (
+                      <tr key={idx} className="border-b last:border-0 hover:bg-muted/30">
+                        <td className="px-4 py-2 font-medium truncate max-w-[200px]">{item.medicineName ?? item.name}</td>
                         <td className="px-4 py-2 text-right">
-                          <Badge variant={Number(item.stock) === 0 ? "destructive" : "secondary"}>
-                            {item.stock} units
+                          <Badge variant={Number(item.totalUnits ?? item.stockUnits ?? 0) === 0 ? "destructive" : "secondary"}>
+                            {item.totalUnits ?? item.stockUnits ?? 0} units
                           </Badge>
                         </td>
                       </tr>
                     ))}
-                    {(summary?.lowStockItems ?? []).length === 0 && (
+                    {(lowStockItems as any[]).length === 0 && (
                       <tr><td colSpan={2} className="px-4 py-6 text-center text-muted-foreground">All medicines are well stocked</td></tr>
                     )}
                   </tbody>

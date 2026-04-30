@@ -28,7 +28,7 @@ export default function StockAuditPage() {
 
   const { data: audits = [], isLoading } = useListStockAudits();
   const { data: auditDetail } = useGetStockAudit(viewAuditId ?? 0, {
-    query: { enabled: !!viewAuditId },
+    query: { enabled: !!viewAuditId } as any,
   });
   const { data: medResults = [] } = useListMedicines(medSearch.length >= 2 ? { search: medSearch } : undefined);
   const createAudit = useCreateStockAudit();
@@ -36,7 +36,7 @@ export default function StockAuditPage() {
   const addMed = (med: any) => {
     const exists = auditItems.find((i) => i.medicineId === med.id);
     if (exists) return;
-    setAuditItems((prev) => [...prev, { medicineId: med.id, medicineName: med.name, physicalUnits: med.stockUnits ?? 0, physicalPacks: 0 }]);
+    setAuditItems((prev) => [...prev, { medicineId: med.id, medicineName: med.name, physicalUnits: med.totalUnits ?? 0, physicalPacks: 0 }]);
     setMedSearch("");
     setAddingMed(false);
   };

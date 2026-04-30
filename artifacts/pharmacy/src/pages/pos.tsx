@@ -281,7 +281,7 @@ export default function POSPage() {
                         <div className="text-xs text-muted-foreground">
                           {m.genericName && `Generic: ${m.genericName} · `}
                           {m.companyName && `${m.companyName} · `}
-                          Stock: {m.stockUnits ?? 0} units
+                          Stock: {m.totalUnits ?? 0} units
                         </div>
                       </div>
                       <div className="text-right flex-shrink-0 ml-2">

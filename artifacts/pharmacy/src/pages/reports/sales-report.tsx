@@ -16,7 +16,7 @@ export default function SalesReportPage() {
 
   const { data: report, isLoading, refetch } = useGetSalesReport(
     { dateFrom, dateTo, groupBy },
-    { query: { enabled: searched } }
+    { query: { enabled: searched } as any }
   );
 
   const handleSearch = () => { setSearched(true); refetch(); };

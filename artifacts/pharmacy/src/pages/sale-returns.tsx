@@ -31,7 +31,7 @@ export default function SaleReturnsPage() {
     saleSearch.length >= 3 ? {} : {}
   );
   const { data: saleDetail } = useGetSale(Number(selectedSaleId), {
-    query: { enabled: !!selectedSaleId && !isNaN(Number(selectedSaleId)) },
+    query: { enabled: !!selectedSaleId && !isNaN(Number(selectedSaleId)) } as any,
   });
   const createReturn = useCreateSaleReturn();
 

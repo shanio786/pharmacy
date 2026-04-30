@@ -16,7 +16,7 @@ export default function PurchaseReportPage() {
 
   const { data: report, isLoading, refetch } = useGetPurchaseReport(
     { dateFrom, dateTo, supplierId: supplierId !== "all" ? Number(supplierId) : undefined },
-    { query: { enabled: searched } }
+    { query: { enabled: searched } as any }
   );
   const { data: suppliers = [] } = useListSuppliers();
 

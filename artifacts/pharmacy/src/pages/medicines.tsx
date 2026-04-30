@@ -57,7 +57,7 @@ export default function MedicinesPage() {
   const { data: racks = [] } = useListRacks();
   const { data: generics = [] } = useListGenericNames();
   const { data: batches = [] } = useGetMedicineBatches(batchMed?.id ?? 0, {
-    query: { enabled: !!batchMed },
+    query: { enabled: !!batchMed } as any,
   });
 
   const createMed = useCreateMedicine();
@@ -213,8 +213,8 @@ export default function MedicinesPage() {
                       <td className="px-4 py-3 text-muted-foreground">{m.companyName ?? "—"}</td>
                       <td className="px-4 py-3 text-muted-foreground">{m.categoryName ?? "—"}</td>
                       <td className="px-4 py-3 text-right">
-                        <Badge variant={Number(m.stockUnits) <= m.reorderLevel ? "destructive" : "secondary"}>
-                          {m.stockUnits ?? 0}
+                        <Badge variant={Number(m.totalUnits) <= m.reorderLevel ? "destructive" : "secondary"}>
+                          {m.totalUnits ?? 0}
                         </Badge>
                       </td>
                       <td className="px-4 py-3 text-right font-medium">
@@ -427,7 +427,7 @@ export default function MedicinesPage() {
           </DialogHeader>
           <div className="space-y-3 py-2">
             <div className="text-sm text-muted-foreground">
-              Current Stock: {adjustMed?.stockUnits ?? 0} units
+              Current Stock: {adjustMed?.totalUnits ?? 0} units
             </div>
             <div className="space-y-1">
               <Label>Adjustment Units (positive=add, negative=remove)</Label>

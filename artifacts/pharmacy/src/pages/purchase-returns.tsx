@@ -38,7 +38,7 @@ export default function PurchaseReturnsPage() {
   const { data: suppliers = [] } = useListSuppliers();
   const { data: purchases = [] } = useListPurchases({});
   const { data: purchaseDetail } = useGetPurchase(Number(purchaseId), {
-    query: { enabled: !!purchaseId && !isNaN(Number(purchaseId)) },
+    query: { enabled: !!purchaseId && !isNaN(Number(purchaseId)) } as any,
   });
   const createReturn = useCreatePurchaseReturn();
 
