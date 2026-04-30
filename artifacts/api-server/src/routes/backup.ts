@@ -10,6 +10,7 @@ import { db } from "../lib/db.js";
 import { settingsTable } from "@workspace/db";
 import { requireAuth, requireAdmin } from "../middlewares/auth.js";
 import { logger } from "../lib/logger.js";
+import { encryptSecret, decryptSecret } from "../lib/crypto.js";
 
 const router = Router();
 
@@ -213,8 +214,8 @@ router.post("/backup/now", requireAuth, requireAdmin, async (req, res) => {
           port: settings.backupVpsPort ?? 22,
           user: settings.backupVpsUser,
           remotePath: settings.backupVpsPath || ".",
-          password: settings.backupVpsPassword,
-          privateKey: settings.backupVpsPrivateKey,
+          password: decryptSecret(settings.backupVpsPassword),
+          privateKey: decryptSecret(settings.backupVpsPrivateKey),
         });
         uploads.vps = true;
       } catch (e) {
@@ -224,9 +225,13 @@ router.post("/backup/now", requireAuth, requireAdmin, async (req, res) => {
       }
     }
     if (wantsDrive && settings?.backupDriveAccessToken) {
-      try {
+      const driveToken = decryptSecret(settings.backupDriveAccessToken);
+      if (!driveToken) {
+        uploads.drive = false;
+        errors.push("Drive: token decrypt failed");
+      } else try {
         await uploadToDrive(filepath, filename, {
-          accessToken: settings.backupDriveAccessToken,
+          accessToken: driveToken,
           folderId: settings.backupDriveFolderId,
         });
         uploads.drive = true;
@@ -446,19 +451,21 @@ router.put("/backup/config", requireAuth, requireAdmin, async (req, res) => {
   if (body.backupVpsUser !== undefined) patch["backupVpsUser"] = body.backupVpsUser || null;
   if (body.backupVpsPath !== undefined) patch["backupVpsPath"] = body.backupVpsPath || null;
   // Only update credentials when caller sends a non-empty value.
+  // Encrypt-at-rest with AES-256-GCM keyed off BACKUP_ENC_KEY||JWT_SECRET so
+  // a DB dump alone never exposes a usable VPS / Drive credential.
   if (typeof body.backupVpsPassword === "string" && body.backupVpsPassword) {
-    patch["backupVpsPassword"] = body.backupVpsPassword;
+    patch["backupVpsPassword"] = encryptSecret(body.backupVpsPassword);
   } else if (body.backupVpsPassword === null) {
     patch["backupVpsPassword"] = null;
   }
   if (typeof body.backupVpsPrivateKey === "string" && body.backupVpsPrivateKey) {
-    patch["backupVpsPrivateKey"] = body.backupVpsPrivateKey;
+    patch["backupVpsPrivateKey"] = encryptSecret(body.backupVpsPrivateKey);
   } else if (body.backupVpsPrivateKey === null) {
     patch["backupVpsPrivateKey"] = null;
   }
   if (body.backupDriveFolderId !== undefined) patch["backupDriveFolderId"] = body.backupDriveFolderId || null;
   if (typeof body.backupDriveAccessToken === "string" && body.backupDriveAccessToken) {
-    patch["backupDriveAccessToken"] = body.backupDriveAccessToken;
+    patch["backupDriveAccessToken"] = encryptSecret(body.backupDriveAccessToken);
   } else if (body.backupDriveAccessToken === null) {
     patch["backupDriveAccessToken"] = null;
   }
