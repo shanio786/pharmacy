@@ -85,21 +85,21 @@ router.post("/sale-returns", requireAuth, requireManager, async (req, res) => {
     totalAmount += item.quantityUnits * item.salePriceUnit;
   }
 
-  const [ret] = await db
-    .insert(saleReturnsTable)
-    .values({
-      saleId,
-      customerId,
-      date,
-      totalAmount: String(totalAmount),
-      reason,
-      notes,
-    })
-    .returning();
+  const ret = await db.transaction(async (tx) => {
+    const [ret] = await tx
+      .insert(saleReturnsTable)
+      .values({
+        saleId,
+        customerId,
+        date,
+        totalAmount: String(totalAmount),
+        reason,
+        notes,
+      })
+      .returning();
 
-  await db.insert(saleReturnItemsTable).values(
-    normalizedItems.map((item) => {
-      return {
+    await tx.insert(saleReturnItemsTable).values(
+      normalizedItems.map((item) => ({
         saleReturnId: ret.id,
         medicineId: item.medicineId,
         batchId: item.batchId,
@@ -111,48 +111,50 @@ router.post("/sale-returns", requireAuth, requireManager, async (req, res) => {
         salePricePack: String(item.salePricePack),
         salePriceUnit: String(item.salePriceUnit),
         totalAmount: String(item.quantityUnits * item.salePriceUnit),
-      };
-    })
-  );
+      }))
+    );
 
-  for (const item of normalizedItems) {
-    if (item.batchId) {
-      const [batch] = await db
-        .select()
-        .from(batchesTable)
-        .where(eq(batchesTable.id, item.batchId))
-        .limit(1);
-      if (batch) {
-        await db
-          .update(batchesTable)
-          .set({ quantityUnits: batch.quantityUnits + item.quantityUnits })
-          .where(eq(batchesTable.id, item.batchId));
+    for (const item of normalizedItems) {
+      if (item.batchId) {
+        const [batch] = await tx
+          .select()
+          .from(batchesTable)
+          .where(eq(batchesTable.id, item.batchId))
+          .limit(1);
+        if (batch) {
+          await tx
+            .update(batchesTable)
+            .set({ quantityUnits: batch.quantityUnits + item.quantityUnits })
+            .where(eq(batchesTable.id, item.batchId));
+        }
       }
     }
-  }
 
-  if (customerId) {
-    const [customer] = await db
-      .select()
-      .from(customersTable)
-      .where(eq(customersTable.id, customerId))
-      .limit(1);
-    if (customer) {
-      const newBalance = Number(customer.balance) - totalAmount;
-      await db
-        .update(customersTable)
-        .set({ balance: String(newBalance) })
-        .where(eq(customersTable.id, customerId));
-      await db.insert(customerLedgerTable).values({
-        customerId,
-        type: "return",
-        referenceId: ret.id,
-        amount: String(-totalAmount),
-        balance: String(newBalance),
-        date,
-      });
+    if (customerId) {
+      const [customer] = await tx
+        .select()
+        .from(customersTable)
+        .where(eq(customersTable.id, customerId))
+        .limit(1);
+      if (customer) {
+        const newBalance = Number(customer.balance) - totalAmount;
+        await tx
+          .update(customersTable)
+          .set({ balance: String(newBalance) })
+          .where(eq(customersTable.id, customerId));
+        await tx.insert(customerLedgerTable).values({
+          customerId,
+          type: "return",
+          referenceId: ret.id,
+          amount: String(-totalAmount),
+          balance: String(newBalance),
+          date,
+        });
+      }
     }
-  }
+
+    return ret;
+  });
 
   res.status(201).json(ret);
 });

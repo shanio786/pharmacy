@@ -115,6 +115,7 @@ router.post("/sales", requireAuth, async (req, res) => {
   // ------------------------------------------------------------------
   type BatchAllocation = {
     medicineId: number;
+    medicineName: string;
     batchId: number;
     batchNo: string;
     quantityUnits: number;   // units deducted from stock
@@ -187,6 +188,7 @@ router.post("/sales", requireAuth, async (req, res) => {
       if (take > 0) {
         allocations.push({
           medicineId: item.medicineId,
+          medicineName: med.name,
           batchId: specBatch.id,
           batchNo: specBatch.batchNo,
           quantityUnits: take,
@@ -223,6 +225,7 @@ router.post("/sales", requireAuth, async (req, res) => {
         const take = Math.min(batch.quantityUnits, remaining);
         allocations.push({
           medicineId: item.medicineId,
+          medicineName: med.name,
           batchId: batch.id,
           batchNo: batch.batchNo,
           quantityUnits: take,
@@ -368,7 +371,12 @@ router.post("/sales", requireAuth, async (req, res) => {
     `Sale ${result.invoiceNo} created, total: ${result.totalAmount}`
   );
 
-  res.status(201).json({ ...result, items: allocations });
+  const responseItems = allocations.map((a) => ({
+    ...a,
+    quantity: a.requestedQty,
+    totalAmount: a.lineTotal,
+  }));
+  res.status(201).json({ ...result, items: responseItems });
 });
 
 router.get("/sales/:id", requireAuth, async (req, res) => {

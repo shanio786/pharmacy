@@ -68,73 +68,74 @@ router.post("/purchase-returns", requireAuth, requireManager, async (req, res) =
     return { ...item, quantityUnits, purchasePriceUnit };
   }));
 
-  let totalAmount = 0;
-  for (const item of normalizedItems) {
-    totalAmount += item.quantityUnits * item.purchasePriceUnit;
-  }
+  const totalAmount = normalizedItems.reduce((sum, i) => sum + i.quantityUnits * i.purchasePriceUnit, 0);
 
-  const [ret] = await db
-    .insert(purchaseReturnsTable)
-    .values({
-      purchaseId,
-      supplierId,
-      date,
-      totalAmount: String(totalAmount),
-      reason,
-      notes,
-    })
-    .returning();
+  const ret = await db.transaction(async (tx) => {
+    const [ret] = await tx
+      .insert(purchaseReturnsTable)
+      .values({
+        purchaseId,
+        supplierId,
+        date,
+        totalAmount: String(totalAmount),
+        reason,
+        notes,
+      })
+      .returning();
 
-  await db.insert(purchaseReturnItemsTable).values(
-    normalizedItems.map((item) => ({
-      purchaseReturnId: ret.id,
-      medicineId: item.medicineId,
-      batchId: item.batchId,
-      batchNo: item.batchNo,
-      quantityUnits: item.quantityUnits,
-      purchasePriceUnit: String(item.purchasePriceUnit),
-      totalAmount: String(item.quantityUnits * item.purchasePriceUnit),
-    }))
-  );
+    await tx.insert(purchaseReturnItemsTable).values(
+      normalizedItems.map((item) => ({
+        purchaseReturnId: ret.id,
+        medicineId: item.medicineId,
+        batchId: item.batchId,
+        batchNo: item.batchNo,
+        quantityUnits: item.quantityUnits,
+        purchasePriceUnit: String(item.purchasePriceUnit),
+        totalAmount: String(item.quantityUnits * item.purchasePriceUnit),
+      }))
+    );
 
-  for (const item of normalizedItems) {
-    if (item.batchId) {
-      const [batch] = await db
-        .select()
-        .from(batchesTable)
-        .where(eq(batchesTable.id, item.batchId))
-        .limit(1);
-      if (batch) {
-        await db
-          .update(batchesTable)
-          .set({ quantityUnits: Math.max(0, batch.quantityUnits - item.quantityUnits) })
-          .where(eq(batchesTable.id, item.batchId));
+    for (const item of normalizedItems) {
+      if (item.batchId) {
+        const [batch] = await tx
+          .select()
+          .from(batchesTable)
+          .where(eq(batchesTable.id, item.batchId))
+          .limit(1);
+        if (batch) {
+          await tx
+            .update(batchesTable)
+            .set({ quantityUnits: Math.max(0, batch.quantityUnits - item.quantityUnits) })
+            .where(eq(batchesTable.id, item.batchId));
+        }
       }
     }
-  }
 
-  if (supplierId) {
-    const [supplier] = await db
-      .select()
-      .from(suppliersTable)
-      .where(eq(suppliersTable.id, supplierId))
-      .limit(1);
-    if (supplier) {
-      const newBalance = Number(supplier.balance) - totalAmount;
-      await db
-        .update(suppliersTable)
-        .set({ balance: String(newBalance) })
-        .where(eq(suppliersTable.id, supplierId));
-      await db.insert(supplierLedgerTable).values({
-        supplierId,
-        type: "return",
-        referenceId: ret.id,
-        amount: String(-totalAmount),
-        balance: String(newBalance),
-        date,
-      });
+    if (supplierId) {
+      const [supplier] = await tx
+        .select()
+        .from(suppliersTable)
+        .where(eq(suppliersTable.id, supplierId))
+        .limit(1);
+      if (supplier) {
+        const newBalance = Number(supplier.balance) - totalAmount;
+        await tx
+          .update(suppliersTable)
+          .set({ balance: String(newBalance) })
+          .where(eq(suppliersTable.id, supplierId));
+        await tx.insert(supplierLedgerTable).values({
+          supplierId,
+          type: "return",
+          referenceId: ret.id,
+          amount: String(-totalAmount),
+          balance: String(newBalance),
+          date,
+        });
+      }
     }
-  }
+
+    return ret;
+  });
 
   res.status(201).json(ret);
 });
