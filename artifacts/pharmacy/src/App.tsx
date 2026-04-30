@@ -27,6 +27,10 @@ import PurchaseReportPage from "@/pages/reports/purchase-report";
 import ExpiryReportPage from "@/pages/reports/expiry-report";
 import ControlledReportPage from "@/pages/reports/controlled-report";
 import ProfitLossPage from "@/pages/reports/profit-loss";
+import MissedSalesReportPage from "@/pages/reports/missed-sales-report";
+import StockAuditVarianceReportPage from "@/pages/reports/stock-audit-variance-report";
+import CustomerLedgerPage from "@/pages/reports/customer-ledger";
+import SupplierLedgerPage from "@/pages/reports/supplier-ledger";
 
 import GeneralSettingsPage from "@/pages/settings/general";
 import UserManagementPage from "@/pages/settings/users";
@@ -75,6 +79,10 @@ function AppRouter() {
               <Route path="/reports/expiry">{() => <MgrRoute component={ExpiryReportPage} />}</Route>
               <Route path="/reports/controlled">{() => <MgrRoute component={ControlledReportPage} />}</Route>
               <Route path="/reports/profit-loss">{() => <MgrRoute component={ProfitLossPage} />}</Route>
+              <Route path="/reports/missed-sales">{() => <MgrRoute component={MissedSalesReportPage} />}</Route>
+              <Route path="/reports/stock-audit-variance">{() => <MgrRoute component={StockAuditVarianceReportPage} />}</Route>
+              <Route path="/reports/customer-ledger">{() => <MgrRoute component={CustomerLedgerPage} />}</Route>
+              <Route path="/reports/supplier-ledger">{() => <MgrRoute component={SupplierLedgerPage} />}</Route>
               <Route path="/settings">{() => <MgrRoute component={GeneralSettingsPage} />}</Route>
               <Route path="/settings/users">{() => <AdminRoute component={UserManagementPage} />}</Route>
               <Route path="/settings/masters">{() => <MgrRoute component={MastersPage} />}</Route>

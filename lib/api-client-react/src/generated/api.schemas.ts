@@ -267,15 +267,12 @@ export interface CreateCustomerBody {
 }
 
 export interface LedgerEntry {
-  id: number;
   date: string;
-  description: string;
+  type: string;
+  reference: string;
   debit: number;
   credit: number;
   balance: number;
-  referenceType: string;
-  /** @nullable */
-  referenceId?: number | null;
 }
 
 export interface LedgerResponse {
@@ -318,8 +315,6 @@ export interface PurchaseItem {
   purchasePrice: number;
   salePrice: number;
   totalAmount: number;
-  /** @nullable */
-  batchId?: number | null;
 }
 
 export type PurchaseWithItems = Purchase & {
@@ -361,6 +356,34 @@ export interface DraftPOItem {
   unitsSold: number;
   suggestedPacks: number;
   purchasePrice: number;
+}
+
+export interface PurchaseOrder {
+  id: number;
+  /** @nullable */
+  supplierId?: number | null;
+  status: string;
+  /** @nullable */
+  notes?: string | null;
+  /** @nullable */
+  createdBy?: number | null;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface CreatePurchaseOrderItem {
+  medicineId: number;
+  quantityPacks: number;
+  /** @nullable */
+  notes?: string | null;
+}
+
+export interface CreatePurchaseOrderBody {
+  /** @nullable */
+  supplierId?: number | null;
+  /** @nullable */
+  notes?: string | null;
+  items: CreatePurchaseOrderItem[];
 }
 
 export interface PurchaseReturn {
@@ -466,12 +489,6 @@ export interface CreateSaleItemBody {
   prescriptionNote?: string | null;
 }
 
-export interface CreateSalePrescriptionBody {
-  doctorName: string;
-  doctorLicense?: string;
-  prescriptionDate: string;
-}
-
 export interface CreateSaleBody {
   /** @nullable */
   customerId?: number | null;
@@ -481,11 +498,6 @@ export interface CreateSaleBody {
   paymentMode: string;
   /** @nullable */
   notes?: string | null;
-  /** @nullable */
-  prescribedBy?: string | null;
-  /** @nullable */
-  patientName?: string | null;
-  prescription?: CreateSalePrescriptionBody;
   items: CreateSaleItemBody[];
 }
 
@@ -792,6 +804,85 @@ export interface ProfitLossReport {
   netProfit: number;
 }
 
+export type MissedSalesReportSummaryItem = {
+  medicineName: string;
+  /** @nullable */
+  genericName?: string | null;
+  totalDemanded: number;
+  occurrences: number;
+};
+
+export type MissedSalesReportEntriesItem = {
+  id: number;
+  date: string;
+  medicineName: string;
+  /** @nullable */
+  genericName?: string | null;
+  quantityDemanded: number;
+  /** @nullable */
+  customerNote?: string | null;
+  createdAt?: string;
+};
+
+export interface MissedSalesReport {
+  summary: MissedSalesReportSummaryItem[];
+  entries: MissedSalesReportEntriesItem[];
+}
+
+export interface StockAuditVarianceItem {
+  auditId: number;
+  /** @nullable */
+  auditTitle?: string | null;
+  auditDate: string;
+  /** @nullable */
+  medicineName?: string | null;
+  systemQty: number;
+  countedQty: number;
+  variance: number;
+  /** @nullable */
+  reason?: string | null;
+}
+
+export interface StockAuditVarianceReport {
+  totalEntries: number;
+  varianceCount: number;
+  totalSurplus: number;
+  totalShortage: number;
+  items: StockAuditVarianceItem[];
+}
+
+export type CustomerLedgerReportCustomer = {
+  id: number;
+  name: string;
+  /** @nullable */
+  phone?: string | null;
+};
+
+export interface CustomerLedgerReport {
+  customer: CustomerLedgerReportCustomer;
+  totalSales: number;
+  totalPaid: number;
+  totalReturned: number;
+  closingBalance: number;
+  entries: LedgerEntry[];
+}
+
+export type SupplierLedgerReportSupplier = {
+  id: number;
+  name: string;
+  /** @nullable */
+  contact?: string | null;
+};
+
+export interface SupplierLedgerReport {
+  supplier: SupplierLedgerReportSupplier;
+  totalPurchases: number;
+  totalPaid: number;
+  totalReturned: number;
+  closingBalance: number;
+  entries: LedgerEntry[];
+}
+
 export type ListMedicinesParams = {
   search?: string;
   categoryId?: number;
@@ -890,27 +981,24 @@ export type GetProfitLossReportParams = {
   dateTo: string;
 };
 
-export interface PurchaseOrderItem {
-  id: number;
-  medicineId: number;
-  medicineName: string;
-  quantityPacks: number;
-  notes?: string | null;
-}
+export type GetMissedSalesReportParams = {
+  dateFrom?: string;
+  dateTo?: string;
+};
 
-export interface PurchaseOrder {
-  id: number;
-  supplierId?: number | null;
-  supplierName?: string | null;
-  status: "draft" | "sent" | "received" | "cancelled";
-  notes?: string | null;
-  createdAt: string;
-  updatedAt: string;
-  items?: PurchaseOrderItem[];
-}
+export type GetStockAuditVarianceReportParams = {
+  dateFrom?: string;
+  dateTo?: string;
+};
 
-export interface CreatePurchaseOrderBody {
-  supplierId?: number | null;
-  notes?: string | null;
-  items: Array<{ medicineId: number; quantityPacks: number; notes?: string | null }>;
-}
+export type GetCustomerLedgerReportParams = {
+  customerId: number;
+  dateFrom?: string;
+  dateTo?: string;
+};
+
+export type GetSupplierLedgerReportParams = {
+  supplierId: number;
+  dateFrom?: string;
+  dateTo?: string;
+};

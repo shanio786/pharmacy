@@ -30,6 +30,7 @@ import type {
   CreateMedicineBody,
   CreateMissedSaleBody,
   CreatePurchaseBody,
+  CreatePurchaseOrderBody,
   CreatePurchaseReturnBody,
   CreateRackBody,
   CreateSaleBody,
@@ -39,6 +40,7 @@ import type {
   CreateUnitBody,
   CreateUserBody,
   Customer,
+  CustomerLedgerReport,
   DashboardSummary,
   Delivery,
   DraftPOItem,
@@ -46,14 +48,18 @@ import type {
   GenericName,
   GetControlledDrugsReportParams,
   GetCustomerLedgerParams,
+  GetCustomerLedgerReportParams,
   GetExpiringMedicinesParams,
   GetExpiryReportParams,
+  GetMissedSalesReportParams,
   GetProfitLossReportParams,
   GetPurchaseReportParams,
   GetSalesChartParams,
   GetSalesReportParams,
+  GetStockAuditVarianceReportParams,
   GetStockReportParams,
   GetSupplierLedgerParams,
+  GetSupplierLedgerReportParams,
   HealthStatus,
   LedgerResponse,
   ListCustomersParams,
@@ -68,12 +74,11 @@ import type {
   Medicine,
   MedicineWithStock,
   MissedSale,
+  MissedSalesReport,
   PaymentBody,
   ProfitLossReport,
   Purchase,
   PurchaseOrder,
-  PurchaseOrderItem,
-  CreatePurchaseOrderBody,
   PurchaseReport,
   PurchaseReturn,
   PurchaseReturnWithItems,
@@ -89,9 +94,11 @@ import type {
   Settings,
   StockAdjustmentBody,
   StockAudit,
+  StockAuditVarianceReport,
   StockAuditWithItems,
   StockReportItem,
   Supplier,
+  SupplierLedgerReport,
   Unit,
   UpdateDeliveryBody,
   UpdateMedicineBody,
@@ -4468,6 +4475,92 @@ export const useGenerateSaleBasedPO = <
   return useMutation(getGenerateSaleBasedPOMutationOptions(options));
 };
 
+/**
+ * @summary Create a draft purchase order with items
+ */
+export const getCreatePurchaseOrderUrl = () => {
+  return `/api/purchase-orders`;
+};
+
+export const createPurchaseOrder = async (
+  createPurchaseOrderBody: CreatePurchaseOrderBody,
+  options?: RequestInit,
+): Promise<PurchaseOrder> => {
+  return customFetch<PurchaseOrder>(getCreatePurchaseOrderUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createPurchaseOrderBody),
+  });
+};
+
+export const getCreatePurchaseOrderMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createPurchaseOrder>>,
+    TError,
+    { data: BodyType<CreatePurchaseOrderBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createPurchaseOrder>>,
+  TError,
+  { data: BodyType<CreatePurchaseOrderBody> },
+  TContext
+> => {
+  const mutationKey = ["createPurchaseOrder"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createPurchaseOrder>>,
+    { data: BodyType<CreatePurchaseOrderBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createPurchaseOrder(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreatePurchaseOrderMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createPurchaseOrder>>
+>;
+export type CreatePurchaseOrderMutationBody = BodyType<CreatePurchaseOrderBody>;
+export type CreatePurchaseOrderMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Create a draft purchase order with items
+ */
+export const useCreatePurchaseOrder = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createPurchaseOrder>>,
+    TError,
+    { data: BodyType<CreatePurchaseOrderBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createPurchaseOrder>>,
+  TError,
+  { data: BodyType<CreatePurchaseOrderBody> },
+  TContext
+> => {
+  return useMutation(getCreatePurchaseOrderMutationOptions(options));
+};
+
 export const getListPurchaseReturnsUrl = (
   params?: ListPurchaseReturnsParams,
 ) => {
@@ -7021,100 +7114,389 @@ export function useGetProfitLossReport<
   return { ...query, queryKey: queryOptions.queryKey };
 }
 
-// ─── Purchase Orders ──────────────────────────────────────────────────────────
+export const getGetMissedSalesReportUrl = (
+  params?: GetMissedSalesReportParams,
+) => {
+  const normalizedParams = new URLSearchParams();
 
-export const getListPurchaseOrdersUrl = () => `/api/purchase-orders`;
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
 
-export const listPurchaseOrders = async (options?: RequestInit): Promise<PurchaseOrder[]> => {
-  return customFetch<PurchaseOrder[]>(getListPurchaseOrdersUrl(), { ...options, method: "GET" });
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/reports/missed-sales?${stringifiedParams}`
+    : `/api/reports/missed-sales`;
 };
 
-export const getListPurchaseOrdersQueryKey = () => [`/api/purchase-orders`] as const;
-
-export const getListPurchaseOrdersQueryOptions = <
-  TData = Awaited<ReturnType<typeof listPurchaseOrders>>,
-  TError = ErrorType<unknown>,
->(options?: {
-  query?: UseQueryOptions<Awaited<ReturnType<typeof listPurchaseOrders>>, TError, TData>;
-}): UseQueryOptions<Awaited<ReturnType<typeof listPurchaseOrders>>, TError, TData> & { queryKey: QueryKey } => {
-  const queryKey = options?.query?.queryKey ?? getListPurchaseOrdersQueryKey();
-  const queryFn: QueryFunction<Awaited<ReturnType<typeof listPurchaseOrders>>> = ({ signal }) =>
-    listPurchaseOrders({ signal });
-  return { queryKey, queryFn, ...(options?.query ?? {}) } as UseQueryOptions<
-    Awaited<ReturnType<typeof listPurchaseOrders>>, TError, TData
-  > & { queryKey: QueryKey };
-};
-
-export function useListPurchaseOrders<
-  TData = Awaited<ReturnType<typeof listPurchaseOrders>>,
-  TError = ErrorType<unknown>,
->(options?: {
-  query?: UseQueryOptions<Awaited<ReturnType<typeof listPurchaseOrders>>, TError, TData>;
-}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
-  const queryOptions = getListPurchaseOrdersQueryOptions(options);
-  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & { queryKey: QueryKey };
-  return { ...query, queryKey: queryOptions.queryKey };
-}
-
-export const getCreatePurchaseOrderUrl = () => `/api/purchase-orders`;
-
-export const createPurchaseOrder = async (
-  body: CreatePurchaseOrderBody,
+export const getMissedSalesReport = async (
+  params?: GetMissedSalesReportParams,
   options?: RequestInit,
-): Promise<PurchaseOrder> => {
-  return customFetch<PurchaseOrder>(getCreatePurchaseOrderUrl(), {
+): Promise<MissedSalesReport> => {
+  return customFetch<MissedSalesReport>(getGetMissedSalesReportUrl(params), {
     ...options,
-    method: "POST",
-    headers: { "Content-Type": "application/json", ...options?.headers },
-    body: JSON.stringify(body),
+    method: "GET",
   });
 };
 
-export const getCreatePurchaseOrderMutationOptions = <
-  TError = ErrorType<unknown>,
-  TContext = unknown,
->(options?: {
-  mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof createPurchaseOrder>>,
-    TError,
-    { data: BodyType<CreatePurchaseOrderBody> },
-    TContext
-  >;
-}): UseMutationOptions<
-  Awaited<ReturnType<typeof createPurchaseOrder>>,
-  TError,
-  { data: BodyType<CreatePurchaseOrderBody> },
-  TContext
-> => {
-  const mutationKey = ["createPurchaseOrder"];
-  const { mutation: mutationOptions } = options
-    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
-      ? options
-      : { ...options, mutation: { ...options.mutation, mutationKey } }
-    : { mutation: { mutationKey } };
-
-  const mutationFn: MutationFunction<
-    Awaited<ReturnType<typeof createPurchaseOrder>>,
-    { data: BodyType<CreatePurchaseOrderBody> }
-  > = (props) => {
-    const { data } = props ?? {};
-    return createPurchaseOrder(data);
-  };
-
-  return { mutationFn, ...mutationOptions };
+export const getGetMissedSalesReportQueryKey = (
+  params?: GetMissedSalesReportParams,
+) => {
+  return [`/api/reports/missed-sales`, ...(params ? [params] : [])] as const;
 };
 
-export function useCreatePurchaseOrder<
+export const getGetMissedSalesReportQueryOptions = <
+  TData = Awaited<ReturnType<typeof getMissedSalesReport>>,
   TError = ErrorType<unknown>,
-  TContext = unknown,
->(options?: {
-  mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof createPurchaseOrder>>,
+>(
+  params?: GetMissedSalesReportParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getMissedSalesReport>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetMissedSalesReportQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getMissedSalesReport>>
+  > = ({ signal }) =>
+    getMissedSalesReport(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getMissedSalesReport>>,
     TError,
-    { data: BodyType<CreatePurchaseOrderBody> },
-    TContext
-  >;
-}) {
-  const mutationOptions = getCreatePurchaseOrderMutationOptions(options);
-  return useMutation(mutationOptions);
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetMissedSalesReportQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getMissedSalesReport>>
+>;
+export type GetMissedSalesReportQueryError = ErrorType<unknown>;
+
+export function useGetMissedSalesReport<
+  TData = Awaited<ReturnType<typeof getMissedSalesReport>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: GetMissedSalesReportParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getMissedSalesReport>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetMissedSalesReportQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getGetStockAuditVarianceReportUrl = (
+  params?: GetStockAuditVarianceReportParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/reports/stock-audit-variance?${stringifiedParams}`
+    : `/api/reports/stock-audit-variance`;
+};
+
+export const getStockAuditVarianceReport = async (
+  params?: GetStockAuditVarianceReportParams,
+  options?: RequestInit,
+): Promise<StockAuditVarianceReport> => {
+  return customFetch<StockAuditVarianceReport>(
+    getGetStockAuditVarianceReportUrl(params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetStockAuditVarianceReportQueryKey = (
+  params?: GetStockAuditVarianceReportParams,
+) => {
+  return [
+    `/api/reports/stock-audit-variance`,
+    ...(params ? [params] : []),
+  ] as const;
+};
+
+export const getGetStockAuditVarianceReportQueryOptions = <
+  TData = Awaited<ReturnType<typeof getStockAuditVarianceReport>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: GetStockAuditVarianceReportParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getStockAuditVarianceReport>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetStockAuditVarianceReportQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getStockAuditVarianceReport>>
+  > = ({ signal }) =>
+    getStockAuditVarianceReport(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getStockAuditVarianceReport>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetStockAuditVarianceReportQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getStockAuditVarianceReport>>
+>;
+export type GetStockAuditVarianceReportQueryError = ErrorType<unknown>;
+
+export function useGetStockAuditVarianceReport<
+  TData = Awaited<ReturnType<typeof getStockAuditVarianceReport>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: GetStockAuditVarianceReportParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getStockAuditVarianceReport>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetStockAuditVarianceReportQueryOptions(
+    params,
+    options,
+  );
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getGetCustomerLedgerReportUrl = (
+  params: GetCustomerLedgerReportParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/reports/customer-ledger?${stringifiedParams}`
+    : `/api/reports/customer-ledger`;
+};
+
+export const getCustomerLedgerReport = async (
+  params: GetCustomerLedgerReportParams,
+  options?: RequestInit,
+): Promise<CustomerLedgerReport> => {
+  return customFetch<CustomerLedgerReport>(
+    getGetCustomerLedgerReportUrl(params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetCustomerLedgerReportQueryKey = (
+  params?: GetCustomerLedgerReportParams,
+) => {
+  return [`/api/reports/customer-ledger`, ...(params ? [params] : [])] as const;
+};
+
+export const getGetCustomerLedgerReportQueryOptions = <
+  TData = Awaited<ReturnType<typeof getCustomerLedgerReport>>,
+  TError = ErrorType<unknown>,
+>(
+  params: GetCustomerLedgerReportParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getCustomerLedgerReport>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetCustomerLedgerReportQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getCustomerLedgerReport>>
+  > = ({ signal }) =>
+    getCustomerLedgerReport(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getCustomerLedgerReport>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetCustomerLedgerReportQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getCustomerLedgerReport>>
+>;
+export type GetCustomerLedgerReportQueryError = ErrorType<unknown>;
+
+export function useGetCustomerLedgerReport<
+  TData = Awaited<ReturnType<typeof getCustomerLedgerReport>>,
+  TError = ErrorType<unknown>,
+>(
+  params: GetCustomerLedgerReportParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getCustomerLedgerReport>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetCustomerLedgerReportQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getGetSupplierLedgerReportUrl = (
+  params: GetSupplierLedgerReportParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/reports/supplier-ledger?${stringifiedParams}`
+    : `/api/reports/supplier-ledger`;
+};
+
+export const getSupplierLedgerReport = async (
+  params: GetSupplierLedgerReportParams,
+  options?: RequestInit,
+): Promise<SupplierLedgerReport> => {
+  return customFetch<SupplierLedgerReport>(
+    getGetSupplierLedgerReportUrl(params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetSupplierLedgerReportQueryKey = (
+  params?: GetSupplierLedgerReportParams,
+) => {
+  return [`/api/reports/supplier-ledger`, ...(params ? [params] : [])] as const;
+};
+
+export const getGetSupplierLedgerReportQueryOptions = <
+  TData = Awaited<ReturnType<typeof getSupplierLedgerReport>>,
+  TError = ErrorType<unknown>,
+>(
+  params: GetSupplierLedgerReportParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getSupplierLedgerReport>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetSupplierLedgerReportQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getSupplierLedgerReport>>
+  > = ({ signal }) =>
+    getSupplierLedgerReport(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getSupplierLedgerReport>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetSupplierLedgerReportQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getSupplierLedgerReport>>
+>;
+export type GetSupplierLedgerReportQueryError = ErrorType<unknown>;
+
+export function useGetSupplierLedgerReport<
+  TData = Awaited<ReturnType<typeof getSupplierLedgerReport>>,
+  TError = ErrorType<unknown>,
+>(
+  params: GetSupplierLedgerReportParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getSupplierLedgerReport>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetSupplierLedgerReportQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
 }

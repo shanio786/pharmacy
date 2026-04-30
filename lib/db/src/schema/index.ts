@@ -556,6 +556,8 @@ export const deliveriesTable = pgTable("deliveries", {
     .default("0"),
   status: deliveryStatusEnum("status").notNull().default("pending"),
   notes: text("notes"),
+  proofNote: text("proof_note"),
+  deliveredAt: timestamp("delivered_at"),
   saleId: integer("sale_id").references(() => salesTable.id),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });

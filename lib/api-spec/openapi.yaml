@@ -1025,6 +1025,25 @@ paths:
                 items:
                   $ref: "#/components/schemas/DraftPOItem"
 
+  /purchase-orders:
+    post:
+      operationId: createPurchaseOrder
+      tags: [purchaseOrders]
+      summary: Create a draft purchase order with items
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePurchaseOrderBody"
+      responses:
+        "201":
+          description: Created purchase order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PurchaseOrder"
+
   # ─── PURCHASE RETURNS ────────────────────────────────────────────────────────
   /purchase-returns:
     get:
@@ -1638,6 +1657,100 @@ paths:
               schema:
                 $ref: "#/components/schemas/ProfitLossReport"
 
+  /reports/missed-sales:
+    get:
+      operationId: getMissedSalesReport
+      tags: [reports]
+      parameters:
+        - name: dateFrom
+          in: query
+          schema:
+            type: string
+        - name: dateTo
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Missed sales report (entries plus summary)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MissedSalesReport"
+
+  /reports/stock-audit-variance:
+    get:
+      operationId: getStockAuditVarianceReport
+      tags: [reports]
+      parameters:
+        - name: dateFrom
+          in: query
+          schema:
+            type: string
+        - name: dateTo
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Stock audit variance report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StockAuditVarianceReport"
+
+  /reports/customer-ledger:
+    get:
+      operationId: getCustomerLedgerReport
+      tags: [reports]
+      parameters:
+        - name: customerId
+          in: query
+          required: true
+          schema:
+            type: integer
+        - name: dateFrom
+          in: query
+          schema:
+            type: string
+        - name: dateTo
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Customer ledger statement
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomerLedgerReport"
+
+  /reports/supplier-ledger:
+    get:
+      operationId: getSupplierLedgerReport
+      tags: [reports]
+      parameters:
+        - name: supplierId
+          in: query
+          required: true
+          schema:
+            type: integer
+        - name: dateFrom
+          in: query
+          schema:
+            type: string
+        - name: dateTo
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Supplier ledger statement
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupplierLedgerReport"
+
 components:
   schemas:
     HealthStatus:
@@ -2051,27 +2164,6 @@ components:
             $ref: "#/components/schemas/LedgerEntry"
       required: [balance, entries]
 
-    LedgerEntry:
-      type: object
-      properties:
-        id:
-          type: integer
-        date:
-          type: string
-        description:
-          type: string
-        debit:
-          type: number
-        credit:
-          type: number
-        balance:
-          type: number
-        referenceType:
-          type: string
-        referenceId:
-          type: ["integer", "null"]
-      required: [id, date, description, debit, credit, balance, referenceType]
-
     PaymentBody:
       type: object
       properties:
@@ -2204,6 +2296,49 @@ components:
         purchasePrice:
           type: number
       required: [medicineId, medicineName, unitsSold, suggestedPacks, purchasePrice]
+
+    PurchaseOrder:
+      type: object
+      properties:
+        id:
+          type: integer
+        supplierId:
+          type: ["integer", "null"]
+        status:
+          type: string
+        notes:
+          type: ["string", "null"]
+        createdBy:
+          type: ["integer", "null"]
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required: [id, status, createdAt]
+
+    CreatePurchaseOrderItem:
+      type: object
+      properties:
+        medicineId:
+          type: integer
+        quantityPacks:
+          type: integer
+        notes:
+          type: ["string", "null"]
+      required: [medicineId, quantityPacks]
+
+    CreatePurchaseOrderBody:
+      type: object
+      properties:
+        supplierId:
+          type: ["integer", "null"]
+        notes:
+          type: ["string", "null"]
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/CreatePurchaseOrderItem"
+      required: [items]
 
     # ─── PURCHASE RETURNS ──────────────────────────────────────────────────────
     PurchaseReturn:
@@ -2898,3 +3033,151 @@ components:
         netProfit:
           type: number
       required: [revenue, costOfGoods, grossProfit, grossMargin, saleReturnsAmount, netProfit]
+
+    MissedSalesReport:
+      type: object
+      properties:
+        summary:
+          type: array
+          items:
+            type: object
+            properties:
+              medicineName:
+                type: string
+              genericName:
+                type: ["string", "null"]
+              totalDemanded:
+                type: number
+              occurrences:
+                type: integer
+            required: [medicineName, totalDemanded, occurrences]
+        entries:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+              date:
+                type: string
+              medicineName:
+                type: string
+              genericName:
+                type: ["string", "null"]
+              quantityDemanded:
+                type: integer
+              customerNote:
+                type: ["string", "null"]
+              createdAt:
+                type: string
+            required: [id, date, medicineName, quantityDemanded]
+      required: [summary, entries]
+
+    StockAuditVarianceItem:
+      type: object
+      properties:
+        auditId:
+          type: integer
+        auditTitle:
+          type: ["string", "null"]
+        auditDate:
+          type: string
+        medicineName:
+          type: ["string", "null"]
+        systemQty:
+          type: number
+        countedQty:
+          type: number
+        variance:
+          type: number
+        reason:
+          type: ["string", "null"]
+      required: [auditId, auditDate, systemQty, countedQty, variance]
+
+    StockAuditVarianceReport:
+      type: object
+      properties:
+        totalEntries:
+          type: integer
+        varianceCount:
+          type: integer
+        totalSurplus:
+          type: number
+        totalShortage:
+          type: number
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/StockAuditVarianceItem"
+      required: [totalEntries, varianceCount, totalSurplus, totalShortage, items]
+
+    LedgerEntry:
+      type: object
+      properties:
+        date:
+          type: string
+        type:
+          type: string
+        reference:
+          type: string
+        debit:
+          type: number
+        credit:
+          type: number
+        balance:
+          type: number
+      required: [date, type, reference, debit, credit, balance]
+
+    CustomerLedgerReport:
+      type: object
+      properties:
+        customer:
+          type: object
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+            phone:
+              type: ["string", "null"]
+          required: [id, name]
+        totalSales:
+          type: number
+        totalPaid:
+          type: number
+        totalReturned:
+          type: number
+        closingBalance:
+          type: number
+        entries:
+          type: array
+          items:
+            $ref: "#/components/schemas/LedgerEntry"
+      required: [customer, totalSales, totalPaid, totalReturned, closingBalance, entries]
+
+    SupplierLedgerReport:
+      type: object
+      properties:
+        supplier:
+          type: object
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+            contact:
+              type: ["string", "null"]
+          required: [id, name]
+        totalPurchases:
+          type: number
+        totalPaid:
+          type: number
+        totalReturned:
+          type: number
+        closingBalance:
+          type: number
+        entries:
+          type: array
+          items:
+            $ref: "#/components/schemas/LedgerEntry"
+      required: [supplier, totalPurchases, totalPaid, totalReturned, closingBalance, entries]

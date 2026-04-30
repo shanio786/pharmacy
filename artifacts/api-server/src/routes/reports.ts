@@ -15,6 +15,12 @@ import {
   customersTable,
   suppliersTable,
   saleReturnsTable,
+  missedSalesTable,
+  stockAuditsTable,
+  stockAuditItemsTable,
+  purchaseReturnsTable,
+  customerLedgerTable,
+  supplierLedgerTable,
 } from "@workspace/db";
 
 const router = Router();
@@ -285,6 +291,300 @@ router.get("/reports/profit-loss", requireAuth, requireManager, async (req, res)
   const grossMargin = revenue > 0 ? (grossProfit / revenue) * 100 : 0;
 
   res.json({ revenue, costOfGoods, grossProfit, grossMargin, saleReturnsAmount, netProfit });
+});
+
+// ─── Missed Sales Report ──────────────────────────────────────────────────
+router.get("/reports/missed-sales", requireAuth, async (req, res) => {
+  const { startDate, endDate } = dateRange(req.query as Record<string, string | undefined>);
+  const conditions = [];
+  if (startDate) conditions.push(gte(missedSalesTable.date, startDate));
+  if (endDate) conditions.push(lte(missedSalesTable.date, endDate));
+
+  const rows = await db
+    .select({
+      id: missedSalesTable.id,
+      date: missedSalesTable.date,
+      medicineName: missedSalesTable.medicineName,
+      quantityDemanded: missedSalesTable.quantity,
+      customerNote: missedSalesTable.reason,
+      createdAt: missedSalesTable.createdAt,
+    })
+    .from(missedSalesTable)
+    .where(conditions.length ? and(...conditions) : undefined)
+    .orderBy(desc(missedSalesTable.date));
+
+  // Aggregate by medicine for top-missed-items summary
+  const summary = await db
+    .select({
+      medicineName: missedSalesTable.medicineName,
+      totalDemanded: sql<number>`COALESCE(SUM(${missedSalesTable.quantity}), 0)`,
+      occurrences: sql<number>`COUNT(*)`,
+    })
+    .from(missedSalesTable)
+    .where(conditions.length ? and(...conditions) : undefined)
+    .groupBy(missedSalesTable.medicineName)
+    .orderBy(sql`COUNT(*) DESC`);
+
+  res.json({
+    summary: summary.map((s) => ({
+      medicineName: s.medicineName,
+      genericName: null as string | null,
+      totalDemanded: Number(s.totalDemanded),
+      occurrences: Number(s.occurrences),
+    })),
+    entries: rows.map((r) => ({ ...r, genericName: null as string | null })),
+  });
+});
+
+// ─── Stock Audit Variance Report ──────────────────────────────────────────
+router.get("/reports/stock-audit-variance", requireAuth, requireManager, async (req, res) => {
+  const { startDate, endDate } = dateRange(req.query as Record<string, string | undefined>);
+  const conditions = [];
+  if (startDate) conditions.push(gte(stockAuditsTable.date, startDate));
+  if (endDate) conditions.push(lte(stockAuditsTable.date, endDate));
+
+  const rows = await db
+    .select({
+      auditId: stockAuditsTable.id,
+      auditTitle: stockAuditsTable.title,
+      auditDate: stockAuditsTable.date,
+      medicineName: medicinesTable.name,
+      systemQty: stockAuditItemsTable.systemCountUnits,
+      countedQty: stockAuditItemsTable.physicalTotalUnits,
+      variance: stockAuditItemsTable.variance,
+      reason: stockAuditItemsTable.notes,
+    })
+    .from(stockAuditItemsTable)
+    .innerJoin(stockAuditsTable, eq(stockAuditItemsTable.auditId, stockAuditsTable.id))
+    .leftJoin(medicinesTable, eq(stockAuditItemsTable.medicineId, medicinesTable.id))
+    .where(conditions.length ? and(...conditions) : undefined)
+    .orderBy(desc(stockAuditsTable.date));
+
+  // Variance only (where system != counted)
+  const withVariance = rows.filter((r) => Number(r.variance) !== 0);
+  const totals = withVariance.reduce(
+    (acc, r) => {
+      const v = Number(r.variance);
+      if (v > 0) acc.totalSurplus += v;
+      else acc.totalShortage += Math.abs(v);
+      return acc;
+    },
+    { totalSurplus: 0, totalShortage: 0 },
+  );
+
+  res.json({
+    totalEntries: rows.length,
+    varianceCount: withVariance.length,
+    totalSurplus: totals.totalSurplus,
+    totalShortage: totals.totalShortage,
+    items: withVariance.map((r) => ({
+      ...r,
+      systemQty: Number(r.systemQty),
+      countedQty: Number(r.countedQty),
+      variance: Number(r.variance),
+    })),
+  });
+});
+
+// ─── Customer Ledger Report ───────────────────────────────────────────────
+router.get("/reports/customer-ledger", requireAuth, requireManager, async (req, res) => {
+  const { startDate, endDate } = dateRange(req.query as Record<string, string | undefined>);
+  const customerIdRaw = (req.query as Record<string, string | undefined>)["customerId"];
+  if (!customerIdRaw) {
+    res.status(400).json({ error: "customerId is required" });
+    return;
+  }
+  const customerId = Number(customerIdRaw);
+  if (!Number.isFinite(customerId) || customerId <= 0) {
+    res.status(400).json({ error: "Invalid customerId" });
+    return;
+  }
+
+  const [customer] = await db
+    .select()
+    .from(customersTable)
+    .where(eq(customersTable.id, customerId))
+    .limit(1);
+  if (!customer) {
+    res.status(404).json({ error: "Customer not found" });
+    return;
+  }
+
+  // Opening balance: latest ledger balance strictly before startDate (or 0)
+  let openingBalance = 0;
+  if (startDate) {
+    const [prior] = await db
+      .select({ balance: customerLedgerTable.balance })
+      .from(customerLedgerTable)
+      .where(
+        and(
+          eq(customerLedgerTable.customerId, customerId),
+          sql`${customerLedgerTable.date} < ${startDate}`,
+        ),
+      )
+      .orderBy(desc(customerLedgerTable.date), desc(customerLedgerTable.id))
+      .limit(1);
+    if (prior) openingBalance = Number(prior.balance);
+  }
+
+  // Period entries from canonical ledger
+  const conds = [eq(customerLedgerTable.customerId, customerId)];
+  if (startDate) conds.push(gte(customerLedgerTable.date, startDate));
+  if (endDate) conds.push(lte(customerLedgerTable.date, endDate));
+
+  const ledgerRows = await db
+    .select({
+      id: customerLedgerTable.id,
+      date: customerLedgerTable.date,
+      type: customerLedgerTable.type,
+      referenceId: customerLedgerTable.referenceId,
+      amount: customerLedgerTable.amount,
+      balance: customerLedgerTable.balance,
+      notes: customerLedgerTable.notes,
+    })
+    .from(customerLedgerTable)
+    .where(and(...conds))
+    .orderBy(customerLedgerTable.date, customerLedgerTable.id);
+
+  // Map type → debit/credit columns (debit increases balance, credit decreases)
+  const entries = ledgerRows.map((r) => {
+    const amt = Number(r.amount);
+    const absAmt = Math.abs(amt);
+    let debit = 0;
+    let credit = 0;
+    let label: "Sale" | "Return" | "Payment" | "Adjustment" = "Adjustment";
+    if (r.type === "sale") { debit = absAmt; label = "Sale"; }
+    else if (r.type === "return") { credit = absAmt; label = "Return"; }
+    else if (r.type === "payment") { credit = absAmt; label = "Payment"; }
+    else { if (amt >= 0) debit = absAmt; else credit = absAmt; }
+    return {
+      date: r.date,
+      type: label,
+      reference: r.referenceId ? `${label.toUpperCase()}-${r.referenceId}` : (r.notes ?? ""),
+      debit,
+      credit,
+      balance: Number(r.balance),
+    };
+  });
+
+  const closingBalance = entries.length
+    ? entries[entries.length - 1].balance
+    : openingBalance;
+
+  const totalSales = entries.reduce((s, e) => s + (e.type === "Sale" ? e.debit : 0), 0);
+  const totalPaid = entries.reduce((s, e) => s + (e.type === "Payment" ? e.credit : 0), 0);
+  const totalReturned = entries.reduce((s, e) => s + (e.type === "Return" ? e.credit : 0), 0);
+
+  res.json({
+    customer: { id: customer.id, name: customer.name, phone: customer.phone },
+    openingBalance,
+    totalSales,
+    totalPaid,
+    totalReturned,
+    closingBalance,
+    entries,
+  });
+});
+
+// ─── Supplier Ledger Report ───────────────────────────────────────────────
+router.get("/reports/supplier-ledger", requireAuth, requireManager, async (req, res) => {
+  const { startDate, endDate } = dateRange(req.query as Record<string, string | undefined>);
+  const supplierIdRaw = (req.query as Record<string, string | undefined>)["supplierId"];
+  if (!supplierIdRaw) {
+    res.status(400).json({ error: "supplierId is required" });
+    return;
+  }
+  const supplierId = Number(supplierIdRaw);
+  if (!Number.isFinite(supplierId) || supplierId <= 0) {
+    res.status(400).json({ error: "Invalid supplierId" });
+    return;
+  }
+
+  const [supplier] = await db
+    .select()
+    .from(suppliersTable)
+    .where(eq(suppliersTable.id, supplierId))
+    .limit(1);
+  if (!supplier) {
+    res.status(404).json({ error: "Supplier not found" });
+    return;
+  }
+
+  // Opening balance: latest ledger balance strictly before startDate (or 0)
+  let openingBalance = 0;
+  if (startDate) {
+    const [prior] = await db
+      .select({ balance: supplierLedgerTable.balance })
+      .from(supplierLedgerTable)
+      .where(
+        and(
+          eq(supplierLedgerTable.supplierId, supplierId),
+          sql`${supplierLedgerTable.date} < ${startDate}`,
+        ),
+      )
+      .orderBy(desc(supplierLedgerTable.date), desc(supplierLedgerTable.id))
+      .limit(1);
+    if (prior) openingBalance = Number(prior.balance);
+  }
+
+  // Period entries from canonical ledger
+  const conds = [eq(supplierLedgerTable.supplierId, supplierId)];
+  if (startDate) conds.push(gte(supplierLedgerTable.date, startDate));
+  if (endDate) conds.push(lte(supplierLedgerTable.date, endDate));
+
+  const ledgerRows = await db
+    .select({
+      id: supplierLedgerTable.id,
+      date: supplierLedgerTable.date,
+      type: supplierLedgerTable.type,
+      referenceId: supplierLedgerTable.referenceId,
+      amount: supplierLedgerTable.amount,
+      balance: supplierLedgerTable.balance,
+      notes: supplierLedgerTable.notes,
+    })
+    .from(supplierLedgerTable)
+    .where(and(...conds))
+    .orderBy(supplierLedgerTable.date, supplierLedgerTable.id);
+
+  // Supplier ledger convention: balance = how much WE owe supplier.
+  // credit (we owe more): purchase. debit (we owe less): payment, return.
+  const entries = ledgerRows.map((r) => {
+    const amt = Number(r.amount);
+    const absAmt = Math.abs(amt);
+    let debit = 0;
+    let credit = 0;
+    let label: "Purchase" | "Return" | "Payment" | "Adjustment" = "Adjustment";
+    if (r.type === "purchase") { credit = absAmt; label = "Purchase"; }
+    else if (r.type === "return") { debit = absAmt; label = "Return"; }
+    else if (r.type === "payment") { debit = absAmt; label = "Payment"; }
+    else { if (amt >= 0) credit = absAmt; else debit = absAmt; }
+    return {
+      date: r.date,
+      type: label,
+      reference: r.referenceId ? `${label.toUpperCase()}-${r.referenceId}` : (r.notes ?? ""),
+      debit,
+      credit,
+      balance: Number(r.balance),
+    };
+  });
+
+  const closingBalance = entries.length
+    ? entries[entries.length - 1].balance
+    : openingBalance;
+
+  const totalPurchases = entries.reduce((s, e) => s + (e.type === "Purchase" ? e.credit : 0), 0);
+  const totalPaid = entries.reduce((s, e) => s + (e.type === "Payment" ? e.debit : 0), 0);
+  const totalReturned = entries.reduce((s, e) => s + (e.type === "Return" ? e.debit : 0), 0);
+
+  res.json({
+    supplier: { id: supplier.id, name: supplier.name, contact: supplier.contact },
+    openingBalance,
+    totalPurchases,
+    totalPaid,
+    totalReturned,
+    closingBalance,
+    entries,
+  });
 });
 
 export default router;

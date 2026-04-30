@@ -549,14 +549,12 @@ export const GetSupplierLedgerResponse = zod.object({
   balance: zod.number(),
   entries: zod.array(
     zod.object({
-      id: zod.number(),
       date: zod.string(),
-      description: zod.string(),
+      type: zod.string(),
+      reference: zod.string(),
       debit: zod.number(),
       credit: zod.number(),
       balance: zod.number(),
-      referenceType: zod.string(),
-      referenceId: zod.number().nullish(),
     }),
   ),
 });
@@ -645,14 +643,12 @@ export const GetCustomerLedgerResponse = zod.object({
   balance: zod.number(),
   entries: zod.array(
     zod.object({
-      id: zod.number(),
       date: zod.string(),
-      description: zod.string(),
+      type: zod.string(),
+      reference: zod.string(),
       debit: zod.number(),
       credit: zod.number(),
       balance: zod.number(),
-      referenceType: zod.string(),
-      referenceId: zod.number().nullish(),
     }),
   ),
 });
@@ -762,6 +758,21 @@ export const GenerateSaleBasedPOResponseItem = zod.object({
 export const GenerateSaleBasedPOResponse = zod.array(
   GenerateSaleBasedPOResponseItem,
 );
+
+/**
+ * @summary Create a draft purchase order with items
+ */
+export const CreatePurchaseOrderBody = zod.object({
+  supplierId: zod.number().nullish(),
+  notes: zod.string().nullish(),
+  items: zod.array(
+    zod.object({
+      medicineId: zod.number(),
+      quantityPacks: zod.number(),
+      notes: zod.string().nullish(),
+    }),
+  ),
+});
 
 export const ListPurchaseReturnsQueryParams = zod.object({
   supplierId: zod.coerce.number().optional(),
@@ -1372,4 +1383,111 @@ export const GetProfitLossReportResponse = zod.object({
   grossMargin: zod.number(),
   saleReturnsAmount: zod.number(),
   netProfit: zod.number(),
+});
+
+export const GetMissedSalesReportQueryParams = zod.object({
+  dateFrom: zod.coerce.string().optional(),
+  dateTo: zod.coerce.string().optional(),
+});
+
+export const GetMissedSalesReportResponse = zod.object({
+  summary: zod.array(
+    zod.object({
+      medicineName: zod.string(),
+      genericName: zod.string().nullish(),
+      totalDemanded: zod.number(),
+      occurrences: zod.number(),
+    }),
+  ),
+  entries: zod.array(
+    zod.object({
+      id: zod.number(),
+      date: zod.string(),
+      medicineName: zod.string(),
+      genericName: zod.string().nullish(),
+      quantityDemanded: zod.number(),
+      customerNote: zod.string().nullish(),
+      createdAt: zod.string().optional(),
+    }),
+  ),
+});
+
+export const GetStockAuditVarianceReportQueryParams = zod.object({
+  dateFrom: zod.coerce.string().optional(),
+  dateTo: zod.coerce.string().optional(),
+});
+
+export const GetStockAuditVarianceReportResponse = zod.object({
+  totalEntries: zod.number(),
+  varianceCount: zod.number(),
+  totalSurplus: zod.number(),
+  totalShortage: zod.number(),
+  items: zod.array(
+    zod.object({
+      auditId: zod.number(),
+      auditTitle: zod.string().nullish(),
+      auditDate: zod.string(),
+      medicineName: zod.string().nullish(),
+      systemQty: zod.number(),
+      countedQty: zod.number(),
+      variance: zod.number(),
+      reason: zod.string().nullish(),
+    }),
+  ),
+});
+
+export const GetCustomerLedgerReportQueryParams = zod.object({
+  customerId: zod.coerce.number(),
+  dateFrom: zod.coerce.string().optional(),
+  dateTo: zod.coerce.string().optional(),
+});
+
+export const GetCustomerLedgerReportResponse = zod.object({
+  customer: zod.object({
+    id: zod.number(),
+    name: zod.string(),
+    phone: zod.string().nullish(),
+  }),
+  totalSales: zod.number(),
+  totalPaid: zod.number(),
+  totalReturned: zod.number(),
+  closingBalance: zod.number(),
+  entries: zod.array(
+    zod.object({
+      date: zod.string(),
+      type: zod.string(),
+      reference: zod.string(),
+      debit: zod.number(),
+      credit: zod.number(),
+      balance: zod.number(),
+    }),
+  ),
+});
+
+export const GetSupplierLedgerReportQueryParams = zod.object({
+  supplierId: zod.coerce.number(),
+  dateFrom: zod.coerce.string().optional(),
+  dateTo: zod.coerce.string().optional(),
+});
+
+export const GetSupplierLedgerReportResponse = zod.object({
+  supplier: zod.object({
+    id: zod.number(),
+    name: zod.string(),
+    contact: zod.string().nullish(),
+  }),
+  totalPurchases: zod.number(),
+  totalPaid: zod.number(),
+  totalReturned: zod.number(),
+  closingBalance: zod.number(),
+  entries: zod.array(
+    zod.object({
+      date: zod.string(),
+      type: zod.string(),
+      reference: zod.string(),
+      debit: zod.number(),
+      credit: zod.number(),
+      balance: zod.number(),
+    }),
+  ),
 });

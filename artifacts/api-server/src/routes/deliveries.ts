@@ -29,6 +29,8 @@ router.get("/deliveries", requireAuth, async (req, res) => {
       paidAmount: deliveriesTable.paidAmount,
       status: deliveriesTable.status,
       notes: deliveriesTable.notes,
+      proofNote: deliveriesTable.proofNote,
+      deliveredAt: deliveriesTable.deliveredAt,
       saleId: deliveriesTable.saleId,
       createdAt: deliveriesTable.createdAt,
     })
@@ -105,18 +107,30 @@ router.get("/deliveries/:id", requireAuth, async (req, res) => {
 
 router.patch("/deliveries/:id", requireAuth, requireManager, async (req, res) => {
   const id = Number(req.params["id"]);
-  const { status, notes, phone, address } = req.body as {
+  const { status, notes, phone, address, proofNote, deliveredAt } = req.body as {
     status?: string;
     notes?: string;
     phone?: string;
     address?: string;
+    proofNote?: string | null;
+    deliveredAt?: string | null;
   };
 
   const updates: Record<string, unknown> = {};
-  if (status) updates["status"] = status;
+  if (status) {
+    updates["status"] = status;
+    // Auto-stamp deliveredAt when client transitions to delivered without sending it
+    if (status === "delivered" && deliveredAt === undefined) {
+      updates["deliveredAt"] = new Date();
+    }
+  }
   if (notes !== undefined) updates["notes"] = notes;
   if (phone !== undefined) updates["phone"] = phone;
   if (address !== undefined) updates["address"] = address;
+  if (proofNote !== undefined) updates["proofNote"] = proofNote;
+  if (deliveredAt !== undefined) {
+    updates["deliveredAt"] = deliveredAt ? new Date(deliveredAt) : null;
+  }
 
   const [row] = await db
     .update(deliveriesTable)

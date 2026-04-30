@@ -6,11 +6,9 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface LedgerEntry {
-  date: string;
-  type: string;
-  reference: string;
-  debit: number;
-  credit: number;
-  balance: number;
-}
+export type SupplierLedgerReportSupplier = {
+  id: number;
+  name: string;
+  /** @nullable */
+  contact?: string | null;
+};

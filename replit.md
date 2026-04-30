@@ -65,6 +65,10 @@ lib/
 - `/reports/expiry` — Expiry report
 - `/reports/controlled` — Controlled drugs report
 - `/reports/profit-loss` — P&L report with chart
+- `/reports/missed-sales` — Top missed-medicine demands + entries
+- `/reports/stock-audit-variance` — Surplus/shortage from physical counts
+- `/reports/customer-ledger` — Customer running balance statement
+- `/reports/supplier-ledger` — Supplier running balance / payable statement
 - `/settings` — General settings (pharmacy info, NTN, tax %)
 - `/settings/users` — User management (CRUD + roles)
 - `/settings/masters` — Master data (Categories, Companies, Units, Racks, Generic Names)
