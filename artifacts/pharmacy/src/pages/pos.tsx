@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from "react";
 import { useListMedicines, useListCustomers, useCreateSale, useGetMedicineBatches } from "@workspace/api-client-react";
-import type { MedicineWithStock, Batch, CreateSaleBody, CreateSaleItemBody } from "@workspace/api-client-react";
+import type { MedicineWithStock, Batch, Customer, CreateSaleBody, CreateSaleItemBody, SaleWithItems, SaleItem } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,9 +9,9 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Search, Plus, Trash2, ShoppingCart, Printer, X, Loader2, User } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Search, Plus, Trash2, ShoppingCart, Printer, X, Loader2, AlertTriangle } from "lucide-react";
 import { format } from "date-fns";
 
 interface CartItem {
@@ -26,7 +26,11 @@ interface CartItem {
   discountPercent: number;
   conversionFactor: number;
   availableQty: number;
+  isControlled: boolean;
 }
+
+type CartField = keyof CartItem;
+type CartFieldValue<K extends CartField> = CartItem[K];
 
 function formatCurrency(n: number) {
   return `PKR ${n.toLocaleString("en-PK", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -39,61 +43,36 @@ function MedicineBatchSelector({
   medicine: MedicineWithStock;
   onAdd: (item: CartItem) => void;
 }) {
-  const { data: batches = [], isLoading } = useGetMedicineBatches(medicine.id);
+  const { data: batchData = [], isLoading } = useGetMedicineBatches(medicine.id);
   const [batchId, setBatchId] = useState<string>("");
   const [saleUnit, setSaleUnit] = useState(medicine.defaultSaleUnit ?? "unit");
   const [qty, setQty] = useState(1);
   const [disc, setDisc] = useState(0);
 
-  const availableBatches = (batches as Batch[]).filter((b) => b.quantityUnits > 0);
+  const batches = batchData as Batch[];
+  const availableBatches = batches.filter((b) => b.quantityUnits > 0);
   const selectedBatch = availableBatches.find((b) => String(b.id) === batchId) ?? availableBatches[0];
 
   const effectivePrice = saleUnit === "pack" ? medicine.salePrice * medicine.conversionFactor : medicine.salePrice;
 
+  const buildCartItem = (batch: Batch | undefined): CartItem => ({
+    medicineId: medicine.id,
+    medicineName: medicine.name,
+    batchId: batch?.id ?? null,
+    batchNo: batch?.batchNo ?? "",
+    expiryDate: batch?.expiryDate ?? "",
+    saleUnit,
+    quantity: qty,
+    salePrice: effectivePrice,
+    discountPercent: disc,
+    conversionFactor: medicine.conversionFactor,
+    availableQty: batch?.quantityUnits ?? 0,
+    isControlled: medicine.isControlled,
+  });
+
   const handleAdd = () => {
-    if (!selectedBatch && availableBatches.length > 0) {
-      onAdd({
-        medicineId: medicine.id,
-        medicineName: medicine.name,
-        batchId: availableBatches[0]?.id ?? null,
-        batchNo: availableBatches[0]?.batchNo ?? "",
-        expiryDate: availableBatches[0]?.expiryDate ?? "",
-        saleUnit,
-        quantity: qty,
-        salePrice: effectivePrice,
-        discountPercent: disc,
-        conversionFactor: medicine.conversionFactor,
-        availableQty: availableBatches[0]?.quantityUnits ?? 0,
-      });
-    } else if (selectedBatch) {
-      onAdd({
-        medicineId: medicine.id,
-        medicineName: medicine.name,
-        batchId: selectedBatch.id,
-        batchNo: selectedBatch.batchNo,
-        expiryDate: selectedBatch.expiryDate,
-        saleUnit,
-        quantity: qty,
-        salePrice: effectivePrice,
-        discountPercent: disc,
-        conversionFactor: medicine.conversionFactor,
-        availableQty: selectedBatch.quantityUnits,
-      });
-    } else {
-      onAdd({
-        medicineId: medicine.id,
-        medicineName: medicine.name,
-        batchId: null,
-        batchNo: "",
-        expiryDate: "",
-        saleUnit,
-        quantity: qty,
-        salePrice: effectivePrice,
-        discountPercent: disc,
-        conversionFactor: medicine.conversionFactor,
-        availableQty: 0,
-      });
-    }
+    if (isLoading) return;
+    onAdd(buildCartItem(selectedBatch ?? availableBatches[0]));
   };
 
   return (
@@ -137,10 +116,86 @@ function MedicineBatchSelector({
         className="h-7 text-xs w-16"
         placeholder="Disc%"
       />
-      <Button size="sm" className="h-7 text-xs px-2" onClick={handleAdd}>
+      <Button size="sm" className="h-7 text-xs px-2" onClick={handleAdd} disabled={isLoading}>
         <Plus className="w-3 h-3 mr-1" />Add
       </Button>
     </div>
+  );
+}
+
+function PrescriptionDialog({
+  open,
+  controlledItems,
+  onConfirm,
+  onCancel,
+}: {
+  open: boolean;
+  controlledItems: string[];
+  onConfirm: (prescribedBy: string, patientName: string) => void;
+  onCancel: () => void;
+}) {
+  const [prescribedBy, setPrescribedBy] = useState("");
+  const [patientName, setPatientName] = useState("");
+
+  const handleConfirm = () => {
+    if (!prescribedBy.trim()) return;
+    onConfirm(prescribedBy.trim(), patientName.trim());
+    setPrescribedBy("");
+    setPatientName("");
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => !v && onCancel()}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-amber-500" />
+            Prescription Required
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3 text-sm">
+          <p className="text-muted-foreground">
+            The following controlled substances require a valid prescription:
+          </p>
+          <ul className="list-disc list-inside text-xs bg-amber-50 dark:bg-amber-950/20 rounded p-2 space-y-0.5">
+            {controlledItems.map((name) => (
+              <li key={name} className="text-amber-700 dark:text-amber-400">{name}</li>
+            ))}
+          </ul>
+          <div className="space-y-1">
+            <Label className="text-xs">Prescribing Doctor <span className="text-destructive">*</span></Label>
+            <Input
+              value={prescribedBy}
+              onChange={(e) => setPrescribedBy(e.target.value)}
+              placeholder="Dr. Ahmed Khan"
+              className="h-8 text-xs"
+              data-testid="input-prescribed-by"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Patient Name</Label>
+            <Input
+              value={patientName}
+              onChange={(e) => setPatientName(e.target.value)}
+              placeholder="Patient name (optional)"
+              className="h-8 text-xs"
+              data-testid="input-patient-name"
+            />
+          </div>
+        </div>
+        <DialogFooter className="gap-2">
+          <Button variant="outline" size="sm" onClick={onCancel}>Cancel</Button>
+          <Button
+            size="sm"
+            onClick={handleConfirm}
+            disabled={!prescribedBy.trim()}
+            data-testid="button-confirm-prescription"
+          >
+            Confirm &amp; Submit
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -156,13 +211,17 @@ export default function POSPage() {
   const [notes, setNotes] = useState("");
   const [activeMed, setActiveMed] = useState<number | null>(null);
   const [showInvoice, setShowInvoice] = useState(false);
-  const [lastSale, setLastSale] = useState<any>(null);
+  const [lastSale, setLastSale] = useState<SaleWithItems | null>(null);
+  const [showPrescriptionDialog, setShowPrescriptionDialog] = useState(false);
 
-  const { data: medicines = [] } = useListMedicines(
+  const { data: medicineData = [] } = useListMedicines(
     search.length >= 2 ? { search } : undefined
   );
-  const { data: customers = [] } = useListCustomers();
+  const { data: customerData = [] } = useListCustomers();
   const createSale = useCreateSale();
+
+  const medicines = medicineData as MedicineWithStock[];
+  const customers = customerData as Customer[];
 
   const subtotal = cart.reduce((acc, item) => {
     const lineTotal = item.salePrice * item.quantity;
@@ -192,7 +251,7 @@ export default function POSPage() {
     setCart((prev) => prev.filter((_, i) => i !== idx));
   };
 
-  const updateCartItem = (idx: number, field: keyof CartItem, value: any) => {
+  const updateCartItem = <K extends CartField>(idx: number, field: K, value: CartFieldValue<K>) => {
     setCart((prev) => {
       const updated = [...prev];
       updated[idx] = { ...updated[idx], [field]: value };
@@ -204,11 +263,9 @@ export default function POSPage() {
     setPaidAmount(Math.ceil(netAmount));
   }, [netAmount]);
 
-  const handleCreateSale = async () => {
-    if (cart.length === 0) {
-      toast({ title: "Cart is empty", variant: "destructive" });
-      return;
-    }
+  const controlledInCart = cart.filter((i) => i.isControlled);
+
+  const buildAndSubmitSale = async (prescriptionNote: string | null) => {
     const body: CreateSaleBody = {
       customerId: customerId !== "walk-in" ? Number(customerId) : null,
       date: format(new Date(), "yyyy-MM-dd"),
@@ -223,7 +280,7 @@ export default function POSPage() {
         quantity: item.quantity,
         salePrice: item.salePrice,
         discountPercent: item.discountPercent,
-        prescriptionNote: null,
+        prescriptionNote: item.isControlled ? prescriptionNote : null,
       })),
     };
     try {
@@ -236,10 +293,29 @@ export default function POSPage() {
       setNotes("");
       setCustomerId("walk-in");
       queryClient.invalidateQueries();
-      toast({ title: `Sale ${(result as any).invoiceNo} created successfully` });
-    } catch (err: any) {
-      toast({ title: "Sale failed", description: err?.message, variant: "destructive" });
+      toast({ title: `Sale ${result.invoiceNo} created successfully` });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Unknown error";
+      toast({ title: "Sale failed", description: message, variant: "destructive" });
     }
+  };
+
+  const handleCreateSale = async () => {
+    if (cart.length === 0) {
+      toast({ title: "Cart is empty", variant: "destructive" });
+      return;
+    }
+    if (controlledInCart.length > 0) {
+      setShowPrescriptionDialog(true);
+      return;
+    }
+    await buildAndSubmitSale(null);
+  };
+
+  const handlePrescriptionConfirm = async (prescribedBy: string, patientName: string) => {
+    setShowPrescriptionDialog(false);
+    const note = `Dr. ${prescribedBy}${patientName ? ` | Patient: ${patientName}` : ""}`;
+    await buildAndSubmitSale(note);
   };
 
   return (
@@ -266,10 +342,10 @@ export default function POSPage() {
         {search.length >= 2 && (
           <Card className="max-h-64 overflow-y-auto">
             <CardContent className="p-2 space-y-1">
-              {(medicines as MedicineWithStock[]).length === 0 ? (
+              {medicines.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-4">No medicines found</p>
               ) : (
-                (medicines as MedicineWithStock[]).map((m) => (
+                medicines.map((m) => (
                   <div key={m.id} className="rounded-lg border p-2 text-sm hover:bg-muted/30">
                     <div className="flex items-center justify-between">
                       <div className="min-w-0">
@@ -311,6 +387,11 @@ export default function POSPage() {
             <CardTitle className="text-sm flex items-center gap-2">
               <ShoppingCart className="w-4 h-4 text-primary" />
               Cart ({cart.length} items)
+              {controlledInCart.length > 0 && (
+                <Badge variant="outline" className="text-xs text-amber-600 border-amber-400">
+                  <AlertTriangle className="w-3 h-3 mr-1" />{controlledInCart.length} Rx required
+                </Badge>
+              )}
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0 flex-1 overflow-y-auto">
@@ -338,7 +419,10 @@ export default function POSPage() {
                     return (
                       <tr key={idx} className="border-b hover:bg-muted/20">
                         <td className="px-3 py-2">
-                          <div className="font-medium truncate max-w-[140px]">{item.medicineName}</div>
+                          <div className="font-medium truncate max-w-[140px]">
+                            {item.medicineName}
+                            {item.isControlled && <span className="ml-1 text-amber-500">Rx</span>}
+                          </div>
                           {item.batchNo && <div className="text-muted-foreground">{item.batchNo} · {item.expiryDate}</div>}
                         </td>
                         <td className="px-2 py-2 text-center">
@@ -409,8 +493,8 @@ export default function POSPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="walk-in">Walk-in Customer</SelectItem>
-                  {(customers as any[]).map((c) => (
-                    <SelectItem key={c.id} value={String(c.id)}>{c.name} ({c.phone})</SelectItem>
+                  {customers.map((c) => (
+                    <SelectItem key={c.id} value={String(c.id)}>{c.name} ({c.phone ?? "—"})</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -522,6 +606,14 @@ export default function POSPage() {
         </Card>
       </div>
 
+      {/* Prescription Dialog for controlled substances */}
+      <PrescriptionDialog
+        open={showPrescriptionDialog}
+        controlledItems={[...new Set(controlledInCart.map((i) => i.medicineName))]}
+        onConfirm={handlePrescriptionConfirm}
+        onCancel={() => setShowPrescriptionDialog(false)}
+      />
+
       {/* Invoice Modal */}
       {showInvoice && lastSale && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
@@ -535,17 +627,23 @@ export default function POSPage() {
               </div>
               <Separator />
               <div className="text-xs space-y-1">
-                {lastSale.items?.map((item: any, i: number) => (
+                {lastSale.items.map((item: SaleItem, i: number) => (
                   <div key={i} className="flex justify-between">
                     <span>{item.medicineName} x{item.quantity} {item.saleUnit}</span>
-                    <span>PKR {item.lineTotal?.toFixed(2)}</span>
+                    <span>PKR {Number(item.totalAmount).toFixed(2)}</span>
                   </div>
                 ))}
               </div>
               <Separator />
               <div className="text-xs space-y-1">
-                <div className="flex justify-between"><span>Net Amount:</span><span className="font-bold">PKR {lastSale.totalAmount?.toFixed(2)}</span></div>
-                <div className="flex justify-between"><span>Paid:</span><span>PKR {lastSale.paidAmount?.toFixed(2)}</span></div>
+                <div className="flex justify-between">
+                  <span>Net Amount:</span>
+                  <span className="font-bold">PKR {Number(lastSale.totalAmount).toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Paid:</span>
+                  <span>PKR {Number(lastSale.paidAmount).toFixed(2)}</span>
+                </div>
               </div>
             </div>
             <div className="flex gap-2 p-3 border-t">
