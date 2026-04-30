@@ -1,0 +1,45 @@
+Candela Pharmacy Software, developed by LumenSoft Technologies, is a specialized retail management system designed to handle the complexities of pharmacy operations, including inventory, sales, and regulatory compliance. It is known for its preloaded medicine database and support for both single-store and multi-store pharmacy chains. 
+Candela Pharmacy
+Candela Pharmacy
+ +4
+A to Z Key Features of Candela Pharmacy Software
+17,000+ Predefined Medicine Database: Comes with a preloaded, ready-to-use database of medicines, including generic names, manufacturer info, and surgical items, which reduces initial setup time.
+Batch Number & Expiry Management: Allows recording batch numbers and expiry dates for stock, with options to set expiry alerts and manage recalls.
+Controlled Drug Monitoring: Specialized tracking for narcotic or controlled substances, including inventory movement, sales tracking, and doctor prescription recording for compliance.
+Generic Name Management: Search for alternative brands using generic names when a specific brand is out of stock.
+Home Delivery Module: End-to-end management for delivery, including customer orders, route planning, and proof of delivery.
+Inventory & POS Integration: Barcode-enabled system with support for POS terminals, cash drawers, and scanners.
+Missed Sales Recording: Tracks products requested by customers but not available, helping with inventory replenishment decisions.
+Multi-Store Management: Allows the head office to sync inventory, prices, and products across multiple branches automatically.
+Packing & Units Management: Enables selling medicines in packs (boxes) or loose units (strips/tablets).
+Purchase Management: Supports automatic purchase order (PO) generation based on past sales and supplier-specific grouping.
+Sales & Returns Processing: Fast billing with support for customer returns and price changes.
+Stock Audit: Tools to perform physical inventory audits and detect pilferage. 
+Candela Pharmacy
+Candela Pharmacy
+ +10
+Candela User Guide & Operational Workflows
+1. Initial Setup and Configuration
+Pharmacy Setup: Configure Candela for pharmacy retail by enabling batch/expiry management via System Configuration > Sale/Purchase Tab.
+Product Definition: Define products by entering the product definition screen (found in Utilities > Setup & Configuration).
+Units Conversion: For pack management, set the conversion factor in the product definition screen to define how many units are in a pack. 
+Candela Pharmacy
+Candela Pharmacy
+ +4
+2. Stock Management (Purchasing)
+Good Received Note (GRN): Enter newly received stock, with options to make Batch No. and Expiry Date mandatory upon entry.
+Purchase Orders: Use "Sale Based Purchase Order" to generate orders based on sales during a previous time frame. 
+Candela Pharmacy
+Candela Pharmacy
+ +2
+3. Sales and Billing
+Point of Sale (POS): Use barcode scanners for fast billing. The system displays stock availability, batch, and rack location during the sale.
+Handling Substitutes: Use the generic name search to suggest alternative brands when the required item is unavailable.
+Returns: Process returns and exchanges through the POS screen. 
+Candela Pharmacy
+Candela Pharmacy
+ +2
+4. Reporting and Compliance
+Product Expiry Report: Accessible via Reports > G-Product Reports > G05 Product Expiry Report.
+Controlled Drug Report: Provides specific tracking for all controlled items.
+Sales and Profit Reports: Daily or periodic sales summaries. 
