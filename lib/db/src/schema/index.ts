@@ -570,6 +570,8 @@ export type Delivery = typeof deliveriesTable.$inferSelect;
 
 export const stockAuditsTable = pgTable("stock_audits", {
   id: serial("id").primaryKey(),
+  title: text("title").notNull().default("Stock Audit"),
+  status: text("status").notNull().default("completed"),
   date: date("date").notNull(),
   notes: text("notes"),
   conductedBy: integer("conducted_by").references(() => usersTable.id),

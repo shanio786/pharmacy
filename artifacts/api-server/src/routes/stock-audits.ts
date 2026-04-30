@@ -21,7 +21,8 @@ router.get("/stock-audits", requireAuth, async (_req, res) => {
 });
 
 router.post("/stock-audits", requireAuth, requireManager, async (req, res) => {
-  const { date, notes, items } = req.body as {
+  const { title, date, notes, items } = req.body as {
+    title?: string;
     date: string;
     notes?: string;
     items: Array<{
@@ -38,6 +39,8 @@ router.post("/stock-audits", requireAuth, requireManager, async (req, res) => {
     const [audit] = await tx
       .insert(stockAuditsTable)
       .values({
+        title: title ?? "Stock Audit",
+        status: "completed",
         date: date ?? new Date().toISOString().slice(0, 10),
         notes,
         conductedBy: req.user?.userId,
@@ -127,7 +130,7 @@ router.get("/stock-audits/:id", requireAuth, async (req, res) => {
     return;
   }
 
-  const items = await db
+  const rawItems = await db
     .select({
       id: stockAuditItemsTable.id,
       medicineId: stockAuditItemsTable.medicineId,
@@ -144,6 +147,19 @@ router.get("/stock-audits/:id", requireAuth, async (req, res) => {
     .from(stockAuditItemsTable)
     .leftJoin(medicinesTable, eq(stockAuditItemsTable.medicineId, medicinesTable.id))
     .where(eq(stockAuditItemsTable.auditId, id));
+
+  const items = rawItems.map((r) => ({
+    id: r.id,
+    medicineId: r.medicineId,
+    medicineName: r.medicineName,
+    batchId: r.batchId,
+    systemUnits: r.systemCountUnits,
+    physicalPacks: Number(r.physicalCountPacks),
+    physicalUnits: r.physicalCountUnits,
+    varianceUnits: r.variance,
+    conversionFactor: r.conversionFactor,
+    notes: r.notes,
+  }));
 
   res.json({ ...audit, items });
 });

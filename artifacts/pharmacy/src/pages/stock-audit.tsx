@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useListStockAudits, useCreateStockAudit, useGetStockAudit, useListMedicines } from "@workspace/api-client-react";
-import type { CreateStockAuditBody, CreateStockAuditItemBody } from "@workspace/api-client-react";
+import type { CreateStockAuditBody, CreateStockAuditItemBody, StockAudit, StockAuditItem, StockAuditWithItems, MedicineWithStock } from "@workspace/api-client-react";
+import type { UseQueryOptions } from "@tanstack/react-query";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +14,13 @@ import { useToast } from "@/hooks/use-toast";
 import { Plus, Loader2, ClipboardCheck, Eye, Search, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 
+interface AuditItem {
+  medicineId: number;
+  medicineName: string;
+  physicalUnits: number;
+  physicalPacks: number;
+}
+
 export default function StockAuditPage() {
   const { toast } = useToast();
   const qc = useQueryClient();
@@ -22,18 +30,20 @@ export default function StockAuditPage() {
   const [title, setTitle] = useState("");
   const [date, setDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [notes, setNotes] = useState("");
-  const [auditItems, setAuditItems] = useState<Array<{ medicineId: number; medicineName: string; physicalUnits: number; physicalPacks: number }>>([]);
+  const [auditItems, setAuditItems] = useState<AuditItem[]>([]);
   const [medSearch, setMedSearch] = useState("");
   const [addingMed, setAddingMed] = useState(false);
 
   const { data: audits = [], isLoading } = useListStockAudits();
-  const { data: auditDetail } = useGetStockAudit(viewAuditId ?? 0, {
-    query: { enabled: !!viewAuditId } as any,
-  });
+  const auditQueryOpts: UseQueryOptions<StockAuditWithItems, unknown, StockAuditWithItems> = {
+    queryKey: ["stock-audit", viewAuditId],
+    enabled: viewAuditId !== null && viewAuditId > 0,
+  };
+  const { data: auditDetail } = useGetStockAudit(viewAuditId ?? 0, { query: auditQueryOpts });
   const { data: medResults = [] } = useListMedicines(medSearch.length >= 2 ? { search: medSearch } : undefined);
   const createAudit = useCreateStockAudit();
 
-  const addMed = (med: any) => {
+  const addMed = (med: MedicineWithStock) => {
     const exists = auditItems.find((i) => i.medicineId === med.id);
     if (exists) return;
     setAuditItems((prev) => [...prev, { medicineId: med.id, medicineName: med.name, physicalUnits: med.totalUnits ?? 0, physicalPacks: 0 }]);
@@ -41,7 +51,7 @@ export default function StockAuditPage() {
     setAddingMed(false);
   };
 
-  const updateItem = (idx: number, field: string, value: number) => {
+  const updateItem = (idx: number, field: keyof Pick<AuditItem, "physicalUnits" | "physicalPacks">, value: number) => {
     setAuditItems((prev) => { const u = [...prev]; u[idx] = { ...u[idx], [field]: value }; return u; });
   };
 
@@ -74,8 +84,6 @@ export default function StockAuditPage() {
     }
   };
 
-  const detail = auditDetail as any;
-
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-3">
@@ -104,7 +112,7 @@ export default function StockAuditPage() {
               <tbody>
                 {isLoading ? (
                   <tr><td colSpan={5} className="text-center py-8 text-muted-foreground">Loading...</td></tr>
-                ) : (audits as any[]).length === 0 ? (
+                ) : audits.length === 0 ? (
                   <tr>
                     <td colSpan={5} className="text-center py-12">
                       <ClipboardCheck className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
@@ -112,7 +120,7 @@ export default function StockAuditPage() {
                     </td>
                   </tr>
                 ) : (
-                  (audits as any[]).map((a) => (
+                  audits.map((a: StockAudit) => (
                     <tr key={a.id} className="border-b last:border-0 hover:bg-muted/20">
                       <td className="px-4 py-3 font-medium">{a.title}</td>
                       <td className="px-4 py-3">{a.date}</td>
@@ -140,7 +148,6 @@ export default function StockAuditPage() {
         </CardContent>
       </Card>
 
-      {/* Create Dialog */}
       <Dialog open={showCreate} onOpenChange={setShowCreate}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -175,13 +182,13 @@ export default function StockAuditPage() {
                 <Input value={medSearch} onChange={(e) => setMedSearch(e.target.value)} placeholder="Search medicine..." className="pl-9" autoFocus />
                 {medSearch.length >= 2 && (
                   <div className="absolute z-10 top-full left-0 right-0 bg-popover border rounded-lg shadow-lg max-h-48 overflow-y-auto mt-1">
-                    {(medResults as any[]).map((m) => (
+                    {medResults.map((m: MedicineWithStock) => (
                       <button key={m.id} className="w-full text-left px-3 py-2 text-sm hover:bg-muted/50" onClick={() => addMed(m)}>
                         <span className="font-medium">{m.name}</span>
-                        <span className="text-muted-foreground ml-2">Stock: {m.stockUnits ?? 0}</span>
+                        <span className="text-muted-foreground ml-2">Stock: {m.totalUnits ?? 0}</span>
                       </button>
                     ))}
-                    {(medResults as any[]).length === 0 && <p className="px-3 py-4 text-sm text-muted-foreground text-center">No results</p>}
+                    {medResults.length === 0 && <p className="px-3 py-4 text-sm text-muted-foreground text-center">No results</p>}
                   </div>
                 )}
               </div>
@@ -229,14 +236,13 @@ export default function StockAuditPage() {
         </DialogContent>
       </Dialog>
 
-      {/* View Audit Sheet */}
       <Sheet open={!!viewAuditId} onOpenChange={(o) => { if (!o) setViewAuditId(null); }}>
         <SheetContent className="w-[600px] overflow-y-auto">
           <SheetHeader>
-            <SheetTitle>{detail?.title}</SheetTitle>
+            <SheetTitle>{auditDetail?.title}</SheetTitle>
           </SheetHeader>
           <div className="mt-4 space-y-4">
-            <div className="text-sm text-muted-foreground">Date: {detail?.date} · Status: {detail?.status}</div>
+            <div className="text-sm text-muted-foreground">Date: {auditDetail?.date} · Status: {auditDetail?.status}</div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="border-b">
@@ -248,22 +254,19 @@ export default function StockAuditPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {(detail?.items ?? []).map((it: any) => {
-                    const variance = it.physicalUnits - it.systemUnits;
-                    return (
-                      <tr key={it.id} className="border-b last:border-0">
-                        <td className="py-2 font-medium">{it.medicineName}</td>
-                        <td className="py-2 text-center">{it.systemUnits}</td>
-                        <td className="py-2 text-center">{it.physicalUnits}</td>
-                        <td className="py-2 text-center">
-                          <Badge variant={variance === 0 ? "secondary" : variance > 0 ? "default" : "destructive"}>
-                            {variance > 0 ? "+" : ""}{variance}
-                          </Badge>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                  {(detail?.items ?? []).length === 0 && (
+                  {(auditDetail?.items ?? []).map((it: StockAuditItem) => (
+                    <tr key={it.id} className="border-b last:border-0">
+                      <td className="py-2 font-medium">{it.medicineName}</td>
+                      <td className="py-2 text-center">{it.systemUnits}</td>
+                      <td className="py-2 text-center">{it.physicalUnits}</td>
+                      <td className="py-2 text-center">
+                        <Badge variant={it.varianceUnits === 0 ? "secondary" : it.varianceUnits > 0 ? "default" : "destructive"}>
+                          {it.varianceUnits > 0 ? "+" : ""}{it.varianceUnits}
+                        </Badge>
+                      </td>
+                    </tr>
+                  ))}
+                  {(auditDetail?.items ?? []).length === 0 && (
                     <tr><td colSpan={4} className="py-6 text-center text-muted-foreground">No items in this audit</td></tr>
                   )}
                 </tbody>
