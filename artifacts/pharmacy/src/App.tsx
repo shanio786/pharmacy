@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/lib/auth-context";
 import { ProtectedRoute } from "@/components/protected-route";
 import { Layout } from "@/components/layout";
+import { useGlobalHotkeys } from "@/hooks/use-global-hotkeys";
 
 import LoginPage from "@/pages/login";
 import DashboardPage from "@/pages/dashboard";
@@ -35,6 +36,7 @@ import SupplierLedgerPage from "@/pages/reports/supplier-ledger";
 import GeneralSettingsPage from "@/pages/settings/general";
 import UserManagementPage from "@/pages/settings/users";
 import MastersPage from "@/pages/settings/masters";
+import BackupSettingsPage from "@/pages/settings/backup";
 
 import NotFound from "@/pages/not-found";
 
@@ -53,6 +55,7 @@ function AdminRoute({ component: Page }: { component: React.ComponentType }) {
 }
 
 function AppRouter() {
+  useGlobalHotkeys();
   return (
     <Switch>
       <Route path="/login" component={LoginPage} />
@@ -86,6 +89,7 @@ function AppRouter() {
               <Route path="/settings">{() => <MgrRoute component={GeneralSettingsPage} />}</Route>
               <Route path="/settings/users">{() => <AdminRoute component={UserManagementPage} />}</Route>
               <Route path="/settings/masters">{() => <MgrRoute component={MastersPage} />}</Route>
+              <Route path="/settings/backup">{() => <AdminRoute component={BackupSettingsPage} />}</Route>
               <Route component={NotFound} />
             </Switch>
           </Layout>

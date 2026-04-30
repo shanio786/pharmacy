@@ -17,6 +17,7 @@ import stockAuditsRouter from "./stock-audits.js";
 import settingsRouter from "./settings.js";
 import dashboardRouter from "./dashboard.js";
 import reportsRouter from "./reports.js";
+import backupRouter from "./backup.js";
 
 const router: IRouter = Router();
 
@@ -38,5 +39,6 @@ router.use(stockAuditsRouter);
 router.use(settingsRouter);
 router.use(dashboardRouter);
 router.use(reportsRouter);
+router.use(backupRouter);
 
 export default router;

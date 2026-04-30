@@ -141,6 +141,7 @@ const navGroups: NavGroup[] = [
       { label: "General Settings", icon: Settings, href: "/settings" },
       { label: "User Management", icon: UserCog, href: "/settings/users", minRole: "admin" },
       { label: "Masters", icon: Database, href: "/settings/masters" },
+      { label: "Backup & Restore", icon: Database, href: "/settings/backup", minRole: "admin" },
     ],
   },
 ];

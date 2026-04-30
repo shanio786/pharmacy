@@ -1,0 +1,73 @@
+{
+  "name": "pharmacare-desktop",
+  "version": "1.0.0",
+  "description": "PharmaCare desktop app — offline pharmacy management",
+  "main": "main.cjs",
+  "private": true,
+  "author": "PharmaCare",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "build:web": "cd .. && pnpm --filter @workspace/pharmacy run build && pnpm --filter @workspace/api-server run build",
+    "build:installer": "electron-builder --win nsis --x64",
+    "dist": "npm run build:web && npm run build:installer"
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.1.8"
+  },
+  "dependencies": {
+    "electron-log": "^5.2.0"
+  },
+  "build": {
+    "appId": "com.pharmacare.desktop",
+    "productName": "PharmaCare",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "main.cjs",
+      "preload.cjs",
+      "../artifacts/pharmacy/dist/**/*",
+      "../artifacts/api-server/dist/**/*",
+      "../artifacts/api-server/package.json",
+      "../artifacts/api-server/node_modules/**/*",
+      "../node_modules/**/*",
+      "../package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "../artifacts/pharmacy/dist",
+        "to": "web",
+        "filter": ["**/*"]
+      },
+      {
+        "from": "../artifacts/api-server/dist",
+        "to": "api",
+        "filter": ["**/*"]
+      }
+    ],
+    "win": {
+      "target": [
+        { "target": "nsis", "arch": ["x64"] }
+      ],
+      "artifactName": "PharmaCare-Setup-${version}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "PharmaCare"
+    },
+    "linux": {
+      "target": ["AppImage", "deb"],
+      "category": "Office"
+    },
+    "mac": {
+      "target": ["dmg"],
+      "category": "public.app-category.business"
+    }
+  }
+}

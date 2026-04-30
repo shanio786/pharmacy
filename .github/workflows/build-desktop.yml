@@ -1,0 +1,73 @@
+name: Build PharmaCare Desktop
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "artifacts/**"
+      - "lib/**"
+      - "desktop/**"
+      - ".github/workflows/build-desktop.yml"
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install workspace deps
+        run: pnpm install --frozen-lockfile
+
+      - name: Build web + api
+        run: |
+          pnpm --filter @workspace/pharmacy run build
+          pnpm --filter @workspace/api-server run build
+
+      - name: Install desktop deps
+        working-directory: desktop
+        run: npm install --no-package-lock
+
+      - name: Build Windows installer
+        working-directory: desktop
+        run: npm run build:installer
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PharmaCare-Setup-${{ matrix.os }}
+          path: desktop/release/PharmaCare-Setup-*.exe
+          if-no-files-found: error
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/**/*.exe
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

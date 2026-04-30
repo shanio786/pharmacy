@@ -80,3 +80,28 @@ lib/
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
 
 See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details.
+
+## Backup & Restore
+
+`Settings → Backup & Restore` (admin only):
+- Manual **Backup Now** runs `pg_dump` → `.sql` file in `/tmp/pharmacare-backups/`.
+- **Download** any backup → user PC; **Restore** uploads a `.sql` and runs `psql -f`.
+- Configure **VPS (SFTP)** host/user/path + password OR private key → auto-upload on every backup. `/api/backup/test-vps` validates.
+- Configure **Google Drive** OAuth access token + folder ID → auto-upload via Drive v3 API. `/api/backup/test-drive` validates.
+- Schedule + retention (keep last N) saved in settings table.
+- Endpoints: `/api/backup/{now,list,download/:f,:f,restore,config,test-vps,test-drive}` (all admin-only).
+
+## Global Hotkeys
+
+`useGlobalHotkeys()` mounted in `AppRouter`:
+- F2 → POS
+- F3 → Medicines
+- F4 → Focus search input on current page
+- F8 → Print (any screen)
+- F9 → Sales report
+
+Hotkeys are suppressed inside text inputs except F4/F8.
+
+## Desktop App (`desktop/`)
+
+Electron wrapper that bundles the Express API + built SPA into a Windows `.exe` installer (`PharmaCare-Setup-<v>.exe`). Auto-built per push by `.github/workflows/build-desktop.yml`. Local install requires PostgreSQL on the same PC; LAN clients point their shortcut to the server PC's IP. See `desktop/README.md`.
