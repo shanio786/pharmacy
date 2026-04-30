@@ -26,7 +26,19 @@ export function requireAuth(req: Request, res: Response, next: NextFunction) {
 
 export function requireAdmin(req: Request, res: Response, next: NextFunction) {
   if (req.user?.role !== "admin") {
-    res.status(403).json({ error: "Forbidden" });
+    res.status(403).json({ error: "Forbidden: admin role required" });
+    return;
+  }
+  next();
+}
+
+/**
+ * Pharmacist (manager) or admin.
+ * Cashiers cannot access purchase/inventory/settings routes.
+ */
+export function requirePharmacist(req: Request, res: Response, next: NextFunction) {
+  if (req.user?.role !== "admin" && req.user?.role !== "pharmacist") {
+    res.status(403).json({ error: "Forbidden: pharmacist or admin role required" });
     return;
   }
   next();

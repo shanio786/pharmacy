@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { eq, ilike, or, sql, and, gt } from "drizzle-orm";
 import { db } from "../lib/db.js";
-import { requireAuth } from "../middlewares/auth.js";
+import { requireAuth, requirePharmacist } from "../middlewares/auth.js";
 import {
   medicinesTable,
   batchesTable,
@@ -85,7 +85,7 @@ router.get("/medicines", requireAuth, async (req, res) => {
   res.json(rows);
 });
 
-router.post("/medicines", requireAuth, async (req, res) => {
+router.post("/medicines", requireAuth, requirePharmacist, async (req, res) => {
   const body = req.body;
   const [med] = await db.insert(medicinesTable).values(body).returning();
   res.status(201).json(med);
@@ -114,7 +114,7 @@ router.get("/medicines/:id", requireAuth, async (req, res) => {
   res.json(row);
 });
 
-router.patch("/medicines/:id", requireAuth, async (req, res) => {
+router.patch("/medicines/:id", requireAuth, requirePharmacist, async (req, res) => {
   const id = Number(req.params["id"]);
   const body = req.body;
   const [med] = await db
@@ -129,7 +129,7 @@ router.patch("/medicines/:id", requireAuth, async (req, res) => {
   res.json(med);
 });
 
-router.delete("/medicines/:id", requireAuth, async (req, res) => {
+router.delete("/medicines/:id", requireAuth, requirePharmacist, async (req, res) => {
   const id = Number(req.params["id"]);
   await db
     .update(medicinesTable)
@@ -181,7 +181,7 @@ router.get("/medicines/:id/alternatives", requireAuth, async (req, res) => {
   res.json(alts.filter((a) => a.id !== id));
 });
 
-router.post("/medicines/:id/adjust-stock", requireAuth, async (req, res) => {
+router.post("/medicines/:id/adjust-stock", requireAuth, requirePharmacist, async (req, res) => {
   const id = Number(req.params["id"]);
   const { batchId, adjustment, reason } = req.body as {
     batchId: number;
