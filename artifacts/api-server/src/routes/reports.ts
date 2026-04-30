@@ -6,182 +6,287 @@ import {
   salesTable,
   saleItemsTable,
   purchasesTable,
-  purchaseItemsTable,
   medicinesTable,
   batchesTable,
   categoriesTable,
+  companiesTable,
+  genericNamesTable,
+  racksTable,
+  customersTable,
+  suppliersTable,
+  saleReturnsTable,
 } from "@workspace/db";
 
 const router = Router();
 
+// Helper: accept dateFrom/dateTo (generated client) or from/to (legacy)
+function dateRange(q: Record<string, string | undefined>) {
+  return {
+    startDate: q["dateFrom"] ?? q["from"],
+    endDate: q["dateTo"] ?? q["to"],
+  };
+}
+
+// GET /reports/sales → SalesReport (matches generated SalesReport type)
 router.get("/reports/sales", requireAuth, async (req, res) => {
-  const { from, to } = req.query as { from?: string; to?: string };
+  const { startDate, endDate } = dateRange(req.query as Record<string, string | undefined>);
   const conditions = [];
-  if (from) conditions.push(gte(salesTable.date, from));
-  if (to) conditions.push(lte(salesTable.date, to));
+  if (startDate) conditions.push(gte(salesTable.date, startDate));
+  if (endDate) conditions.push(lte(salesTable.date, endDate));
 
   const rows = await db
     .select({
       date: salesTable.date,
       invoiceNo: salesTable.invoiceNo,
-      medicineName: medicinesTable.name,
-      qty: saleItemsTable.quantityUnits,
-      unitPrice: saleItemsTable.salePriceUnit,
-      discountPct: saleItemsTable.discountPct,
-      total: saleItemsTable.totalAmount,
+      customerName: customersTable.name,
+      totalAmount: salesTable.totalAmount,
+      discountAmount: salesTable.discountAmount,
+      paymentMode: salesTable.paymentMode,
     })
-    .from(saleItemsTable)
-    .innerJoin(salesTable, eq(saleItemsTable.saleId, salesTable.id))
-    .innerJoin(medicinesTable, eq(saleItemsTable.medicineId, medicinesTable.id))
+    .from(salesTable)
+    .leftJoin(customersTable, eq(salesTable.customerId, customersTable.id))
     .where(conditions.length ? and(...conditions) : undefined)
     .orderBy(desc(salesTable.date));
 
-  const totalRevenue = rows.reduce((s, r) => s + Number(r.total), 0);
-  const totalQty = rows.reduce((s, r) => s + Number(r.qty), 0);
+  const totalSales = rows.reduce((s, r) => s + Number(r.totalAmount), 0);
+  const totalDiscount = rows.reduce((s, r) => s + Number(r.discountAmount), 0);
+  const netSales = totalSales - totalDiscount;
 
-  res.json({ rows, totalRevenue, totalQty });
+  res.json({
+    totalSales,
+    totalDiscount,
+    netSales,
+    saleCount: rows.length,
+    rows: rows.map((r) => ({
+      date: r.date,
+      invoiceNo: r.invoiceNo,
+      customerName: r.customerName ?? null,
+      totalAmount: Number(r.totalAmount),
+      discountAmount: Number(r.discountAmount),
+      paymentMode: r.paymentMode,
+    })),
+  });
 });
 
+// GET /reports/stock → StockReportItem[] (array — matches generated return type)
 router.get("/reports/stock", requireAuth, async (req, res) => {
-  const { categoryId } = req.query as { categoryId?: string };
+  const { categoryId, companyId } = req.query as { categoryId?: string; companyId?: string };
   const today = new Date().toISOString().slice(0, 10);
 
   const conditions = [eq(medicinesTable.isActive, true)];
   if (categoryId) conditions.push(eq(medicinesTable.categoryId, Number(categoryId)));
+  if (companyId) conditions.push(eq(medicinesTable.companyId, Number(companyId)));
 
   const rows = await db
     .select({
       medicineId: medicinesTable.id,
       medicineName: medicinesTable.name,
+      genericName: genericNamesTable.name,
+      companyName: companiesTable.name,
       categoryName: categoriesTable.name,
-      strength: medicinesTable.strength,
-      salePriceUnit: medicinesTable.salePriceUnit,
-      purchasePriceUnit: medicinesTable.purchasePriceUnit,
-      stockQty: sql<number>`COALESCE(SUM(${batchesTable.quantityUnits}), 0)`,
-      stockValue: sql<number>`COALESCE(SUM(${batchesTable.quantityUnits} * ${medicinesTable.purchasePriceUnit}), 0)`,
+      rackName: racksTable.name,
+      unitsPerPack: medicinesTable.unitsPerPack,
+      salePrice: medicinesTable.salePriceUnit,
+      isControlled: medicinesTable.isControlled,
+      totalUnits: sql<number>`COALESCE(SUM(CASE WHEN ${batchesTable.expiryDate} >= ${today}::date THEN ${batchesTable.quantityUnits} ELSE 0 END), 0)`,
+      stockValue: sql<number>`COALESCE(SUM(CASE WHEN ${batchesTable.expiryDate} >= ${today}::date THEN ${batchesTable.quantityUnits} * ${medicinesTable.purchasePriceUnit} ELSE 0 END), 0)`,
     })
     .from(medicinesTable)
+    .leftJoin(genericNamesTable, eq(medicinesTable.genericNameId, genericNamesTable.id))
+    .leftJoin(companiesTable, eq(medicinesTable.companyId, companiesTable.id))
     .leftJoin(categoriesTable, eq(medicinesTable.categoryId, categoriesTable.id))
-    .leftJoin(batchesTable, and(
-      eq(batchesTable.medicineId, medicinesTable.id),
-      gte(batchesTable.expiryDate, today),
-    ))
+    .leftJoin(racksTable, eq(medicinesTable.rackId, racksTable.id))
+    .leftJoin(batchesTable, eq(batchesTable.medicineId, medicinesTable.id))
     .where(and(...conditions))
-    .groupBy(medicinesTable.id, medicinesTable.name, categoriesTable.name, medicinesTable.strength, medicinesTable.salePriceUnit, medicinesTable.purchasePriceUnit)
+    .groupBy(
+      medicinesTable.id, medicinesTable.name, genericNamesTable.name,
+      companiesTable.name, categoriesTable.name, racksTable.name,
+      medicinesTable.unitsPerPack, medicinesTable.salePriceUnit,
+      medicinesTable.purchasePriceUnit, medicinesTable.isControlled,
+    )
     .orderBy(medicinesTable.name);
 
-  const totalValue = rows.reduce((s, r) => s + Number(r.stockValue), 0);
-  res.json({ rows, totalValue });
+  res.json(rows.map((r) => ({
+    medicineId: r.medicineId,
+    medicineName: r.medicineName,
+    genericName: r.genericName ?? null,
+    companyName: r.companyName ?? null,
+    categoryName: r.categoryName ?? null,
+    rackName: r.rackName ?? null,
+    totalUnits: Number(r.totalUnits),
+    totalPacks: r.unitsPerPack > 0 ? Math.floor(Number(r.totalUnits) / r.unitsPerPack) : 0,
+    salePrice: Number(r.salePrice),
+    stockValue: Number(r.stockValue),
+    isControlled: r.isControlled,
+  })));
 });
 
-router.get("/reports/purchases", requireAuth, async (req, res) => {
-  const { from, to } = req.query as { from?: string; to?: string };
+// GET /reports/purchase (singular — matches generated client URL) → PurchaseReport
+router.get("/reports/purchase", requireAuth, async (req, res) => {
+  const { startDate, endDate } = dateRange(req.query as Record<string, string | undefined>);
+  const { supplierId } = req.query as { supplierId?: string };
+
   const conditions = [];
-  if (from) conditions.push(gte(purchasesTable.date, from));
-  if (to) conditions.push(lte(purchasesTable.date, to));
+  if (startDate) conditions.push(gte(purchasesTable.date, startDate));
+  if (endDate) conditions.push(lte(purchasesTable.date, endDate));
+  if (supplierId) conditions.push(eq(purchasesTable.supplierId, Number(supplierId)));
 
   const rows = await db
     .select({
       date: purchasesTable.date,
       invoiceNo: purchasesTable.invoiceNo,
-      medicineName: medicinesTable.name,
-      batchNo: purchaseItemsTable.batchNo,
-      expiryDate: purchaseItemsTable.expiryDate,
-      qty: purchaseItemsTable.quantityUnits,
-      purchasePriceUnit: purchaseItemsTable.purchasePriceUnit,
-      total: purchaseItemsTable.totalAmount,
+      supplierName: suppliersTable.name,
+      totalAmount: purchasesTable.totalAmount,
     })
-    .from(purchaseItemsTable)
-    .innerJoin(purchasesTable, eq(purchaseItemsTable.purchaseId, purchasesTable.id))
-    .innerJoin(medicinesTable, eq(purchaseItemsTable.medicineId, medicinesTable.id))
+    .from(purchasesTable)
+    .leftJoin(suppliersTable, eq(purchasesTable.supplierId, suppliersTable.id))
     .where(conditions.length ? and(...conditions) : undefined)
     .orderBy(desc(purchasesTable.date));
 
-  const totalAmount = rows.reduce((s, r) => s + Number(r.total), 0);
-  res.json({ rows, totalAmount });
+  const totalPurchases = rows.reduce((s, r) => s + Number(r.totalAmount), 0);
+
+  res.json({
+    totalPurchases,
+    purchaseCount: rows.length,
+    rows: rows.map((r) => ({
+      date: r.date,
+      invoiceNo: r.invoiceNo ?? null,
+      supplierName: r.supplierName ?? null,
+      totalAmount: Number(r.totalAmount),
+    })),
+  });
 });
 
+// Legacy plural path — redirect to singular
+router.get("/reports/purchases", requireAuth, (req, res) => {
+  const qs = new URLSearchParams(req.query as Record<string, string>).toString();
+  res.redirect(307, `/api/reports/purchase${qs ? `?${qs}` : ""}`);
+});
+
+// GET /reports/expiry → ExpiringBatch[] (matches generated return type)
 router.get("/reports/expiry", requireAuth, async (req, res) => {
-  const { days = "90" } = req.query as { days?: string };
-  const numDays = Math.min(365, Number(days));
-  const today = new Date().toISOString().slice(0, 10);
-  const alertDate = new Date();
+  const { daysAhead = "90" } = req.query as { daysAhead?: string };
+  const numDays = Math.min(365, Number(daysAhead));
+  const today = new Date();
+  const todayStr = today.toISOString().slice(0, 10);
+  const alertDate = new Date(today);
   alertDate.setDate(alertDate.getDate() + numDays);
   const alertDateStr = alertDate.toISOString().slice(0, 10);
 
   const rows = await db
     .select({
+      batchId: batchesTable.id,
       medicineId: medicinesTable.id,
       medicineName: medicinesTable.name,
       batchNo: batchesTable.batchNo,
       expiryDate: batchesTable.expiryDate,
       quantityUnits: batchesTable.quantityUnits,
-      purchasePrice: batchesTable.purchasePrice,
-      value: sql<number>`${batchesTable.quantityUnits} * ${batchesTable.purchasePrice}`,
+      unitsPerPack: medicinesTable.unitsPerPack,
     })
     .from(batchesTable)
     .innerJoin(medicinesTable, eq(batchesTable.medicineId, medicinesTable.id))
     .where(and(
-      gte(batchesTable.expiryDate, today),
+      gte(batchesTable.expiryDate, todayStr),
       lte(batchesTable.expiryDate, alertDateStr),
       gte(batchesTable.quantityUnits, 1),
     ))
     .orderBy(batchesTable.expiryDate);
 
-  const totalValue = rows.reduce((s, r) => s + Number(r.value), 0);
-  res.json({ rows, totalValue });
+  const todayMs = today.getTime();
+  res.json(rows.map((r) => {
+    const expiryMs = new Date(r.expiryDate).getTime();
+    const daysToExpiry = Math.ceil((expiryMs - todayMs) / (1000 * 60 * 60 * 24));
+    return {
+      batchId: r.batchId,
+      medicineId: r.medicineId,
+      medicineName: r.medicineName,
+      batchNo: r.batchNo,
+      expiryDate: r.expiryDate,
+      quantityUnits: r.quantityUnits,
+      quantityPacks: r.unitsPerPack > 0 ? Math.floor(r.quantityUnits / r.unitsPerPack) : 0,
+      daysToExpiry,
+    };
+  }));
 });
 
+// GET /reports/controlled-drugs → ControlledDrugEntry[] (array — matches generated type)
 router.get("/reports/controlled-drugs", requireAuth, async (req, res) => {
-  const { from, to } = req.query as { from?: string; to?: string };
+  const { startDate, endDate } = dateRange(req.query as Record<string, string | undefined>);
   const conditions = [eq(medicinesTable.isControlled, true)];
-  if (from) conditions.push(gte(salesTable.date, from));
-  if (to) conditions.push(lte(salesTable.date, to));
+  if (startDate) conditions.push(gte(salesTable.date, startDate));
+  if (endDate) conditions.push(lte(salesTable.date, endDate));
 
   const rows = await db
     .select({
       date: salesTable.date,
-      invoiceNo: salesTable.invoiceNo,
+      medicineId: medicinesTable.id,
       medicineName: medicinesTable.name,
       qty: saleItemsTable.quantityUnits,
+      invoiceNo: salesTable.invoiceNo,
       prescribedBy: salesTable.prescribedBy,
       patientName: salesTable.patientName,
+      customerName: customersTable.name,
     })
     .from(saleItemsTable)
     .innerJoin(salesTable, eq(saleItemsTable.saleId, salesTable.id))
     .innerJoin(medicinesTable, eq(saleItemsTable.medicineId, medicinesTable.id))
+    .leftJoin(customersTable, eq(salesTable.customerId, customersTable.id))
     .where(and(...conditions))
     .orderBy(desc(salesTable.date));
 
-  res.json({ rows });
+  res.json(rows.map((r) => ({
+    date: r.date,
+    medicineId: r.medicineId,
+    medicineName: r.medicineName,
+    transactionType: "sale",
+    quantity: r.qty,
+    invoiceNo: r.invoiceNo ?? null,
+    prescriptionNote: r.prescribedBy
+      ? `Dr. ${r.prescribedBy}${r.patientName ? ` | Patient: ${r.patientName}` : ""}`
+      : null,
+    customerName: r.customerName ?? null,
+  })));
 });
 
+// GET /reports/profit-loss → ProfitLossReport (matches generated type exactly)
 router.get("/reports/profit-loss", requireAuth, async (req, res) => {
-  const { from, to } = req.query as { from?: string; to?: string };
-  const conditions = [];
-  if (from) conditions.push(gte(salesTable.date, from));
-  if (to) conditions.push(lte(salesTable.date, to));
+  const { startDate, endDate } = dateRange(req.query as Record<string, string | undefined>);
+
+  const saleConditions = [];
+  if (startDate) saleConditions.push(gte(salesTable.date, startDate));
+  if (endDate) saleConditions.push(lte(salesTable.date, endDate));
+
+  const purchaseConditions = [];
+  if (startDate) purchaseConditions.push(gte(purchasesTable.date, startDate));
+  if (endDate) purchaseConditions.push(lte(purchasesTable.date, endDate));
+
+  const returnConditions = [];
+  if (startDate) returnConditions.push(gte(saleReturnsTable.date, startDate));
+  if (endDate) returnConditions.push(lte(saleReturnsTable.date, endDate));
 
   const [revenueRow] = await db
     .select({ revenue: sql<number>`COALESCE(SUM(${salesTable.totalAmount}), 0)` })
     .from(salesTable)
-    .where(conditions.length ? and(...conditions) : undefined);
-
-  const purchaseConditions = [];
-  if (from) purchaseConditions.push(gte(purchasesTable.date, from));
-  if (to) purchaseConditions.push(lte(purchasesTable.date, to));
+    .where(saleConditions.length ? and(...saleConditions) : undefined);
 
   const [costRow] = await db
     .select({ cost: sql<number>`COALESCE(SUM(${purchasesTable.totalAmount}), 0)` })
     .from(purchasesTable)
     .where(purchaseConditions.length ? and(...purchaseConditions) : undefined);
 
+  const [returnsRow] = await db
+    .select({ total: sql<number>`COALESCE(SUM(${saleReturnsTable.totalAmount}), 0)` })
+    .from(saleReturnsTable)
+    .where(returnConditions.length ? and(...returnConditions) : undefined);
+
   const revenue = Number(revenueRow?.revenue ?? 0);
-  const cost = Number(costRow?.cost ?? 0);
-  const grossProfit = revenue - cost;
+  const costOfGoods = Number(costRow?.cost ?? 0);
+  const saleReturnsAmount = Number(returnsRow?.total ?? 0);
+  const grossProfit = revenue - costOfGoods;
+  const netProfit = grossProfit - saleReturnsAmount;
   const grossMargin = revenue > 0 ? (grossProfit / revenue) * 100 : 0;
 
-  res.json({ revenue, cost, grossProfit, grossMargin });
+  res.json({ revenue, costOfGoods, grossProfit, grossMargin, saleReturnsAmount, netProfit });
 });
 
 export default router;

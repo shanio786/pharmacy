@@ -205,8 +205,6 @@ router.post("/sales", requireAuth, async (req, res) => {
           eq(batchesTable.medicineId, item.medicineId),
           gte(batchesTable.expiryDate, today),
           gt(batchesTable.quantityUnits, 0),
-          // Exclude the already-chosen batchId to avoid double-counting
-          ...(item.batchId ? [eq(batchesTable.id, item.batchId)] : []),
         ))
         .orderBy(asc(batchesTable.expiryDate));
 

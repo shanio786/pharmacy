@@ -43,16 +43,6 @@ const medicineSelect = {
   createdAt: medicinesTable.createdAt,
 };
 
-// Joins needed for all medicine queries
-function withJoins(query: ReturnType<typeof db.select>) {
-  return (query as any)
-    .leftJoin(genericNamesTable, eq(medicinesTable.genericNameId, genericNamesTable.id))
-    .leftJoin(categoriesTable, eq(medicinesTable.categoryId, categoriesTable.id))
-    .leftJoin(companiesTable, eq(medicinesTable.companyId, companiesTable.id))
-    .leftJoin(unitsTable, eq(medicinesTable.unitId, unitsTable.id))
-    .leftJoin(racksTable, eq(medicinesTable.rackId, racksTable.id));
-}
-
 // Enrich a medicine row with stock fields matching MedicineWithStock contract
 function withStock(select: typeof medicineSelect) {
   return {
