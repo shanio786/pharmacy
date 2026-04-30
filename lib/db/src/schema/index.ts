@@ -382,7 +382,7 @@ export type PurchaseReturnItem = typeof purchaseReturnItemsTable.$inferSelect;
 
 export const salesTable = pgTable("sales", {
   id: serial("id").primaryKey(),
-  invoiceNo: text("invoice_no").notNull(),
+  invoiceNo: text("invoice_no").notNull().unique(),
   customerId: integer("customer_id").references(() => customersTable.id),
   date: date("date").notNull(),
   subtotal: numeric("subtotal", { precision: 14, scale: 4 })

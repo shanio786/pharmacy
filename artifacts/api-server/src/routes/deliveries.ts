@@ -6,6 +6,44 @@ import { deliveriesTable, customersTable } from "@workspace/db";
 
 const router = Router();
 
+type DeliveryRow = {
+  id: number;
+  saleId: number | null;
+  customerId: number | null;
+  customerName: string | null;
+  phone: string | null;
+  address: string;
+  date: string;
+  totalAmount: string | null;
+  paidAmount: string | null;
+  status: string;
+  notes: string | null;
+  proofNote: string | null;
+  deliveredAt: Date | null;
+  createdAt: Date;
+};
+
+function toDto(r: DeliveryRow) {
+  return {
+    id: r.id,
+    saleId: r.saleId,
+    customerId: r.customerId,
+    customerName: r.customerName,
+    customerPhone: r.phone,
+    deliveryAddress: r.address,
+    scheduledDate: r.date,
+    status: r.status,
+    totalAmount: r.totalAmount,
+    paidAmount: r.paidAmount,
+    notes: r.notes,
+    proofNote: r.proofNote,
+    deliveredAt:
+      r.deliveredAt instanceof Date ? r.deliveredAt.toISOString() : r.deliveredAt,
+    createdAt:
+      r.createdAt instanceof Date ? r.createdAt.toISOString() : r.createdAt,
+  };
+}
+
 router.get("/deliveries", requireAuth, async (req, res) => {
   const { status, from, to } = req.query as {
     status?: string;
@@ -13,7 +51,13 @@ router.get("/deliveries", requireAuth, async (req, res) => {
     to?: string;
   };
   const conditions = [];
-  if (status) conditions.push(eq(deliveriesTable.status, status as "pending" | "dispatched" | "delivered" | "cancelled"));
+  if (status)
+    conditions.push(
+      eq(
+        deliveriesTable.status,
+        status as "pending" | "dispatched" | "delivered" | "cancelled",
+      ),
+    );
   if (from) conditions.push(gte(deliveriesTable.date, from));
   if (to) conditions.push(lte(deliveriesTable.date, to));
 
@@ -39,56 +83,49 @@ router.get("/deliveries", requireAuth, async (req, res) => {
     .where(conditions.length ? and(...conditions) : undefined)
     .orderBy(desc(deliveriesTable.date));
 
-  res.json(rows);
+  res.json(rows.map(toDto));
 });
 
 router.post("/deliveries", requireAuth, async (req, res) => {
   const body = req.body as {
-    customerId?: number;
-    customerName?: string;
-    phone?: string;
-    address?: string;
-    deliveryAddress?: string;
-    date?: string;
-    scheduledDate?: string;
-    totalAmount?: number;
-    paidAmount?: number;
-    notes?: string;
-    saleId?: number;
+    customerId?: number | null;
+    customerName?: string | null;
+    phone?: string | null;
+    customerPhone?: string | null;
+    address?: string | null;
+    deliveryAddress?: string | null;
+    date?: string | null;
+    scheduledDate?: string | null;
+    totalAmount?: number | string;
+    paidAmount?: number | string;
+    notes?: string | null;
+    saleId?: number | null;
   };
-  const {
-    customerId,
-    customerName,
-    phone,
-    totalAmount,
-    paidAmount,
-    notes,
-    saleId,
-  } = body;
-  const address = body.address ?? body.deliveryAddress;
-  const date = body.date ?? body.scheduledDate;
+  const address = body.deliveryAddress ?? body.address;
+  const date = body.scheduledDate ?? body.date;
+  const phone = body.customerPhone ?? body.phone;
 
   if (!address) {
-    res.status(400).json({ error: "Address is required" });
+    res.status(400).json({ error: "deliveryAddress is required" });
     return;
   }
 
   const [row] = await db
     .insert(deliveriesTable)
     .values({
-      customerId,
-      customerName,
-      phone,
+      customerId: body.customerId ?? null,
+      customerName: body.customerName ?? null,
+      phone: phone ?? null,
       address,
       date: date ?? new Date().toISOString().slice(0, 10),
-      totalAmount: String(totalAmount ?? 0),
-      paidAmount: String(paidAmount ?? 0),
-      notes,
-      saleId,
+      totalAmount: String(body.totalAmount ?? 0),
+      paidAmount: String(body.paidAmount ?? 0),
+      notes: body.notes ?? null,
+      saleId: body.saleId ?? null,
     })
     .returning();
 
-  res.status(201).json(row);
+  res.status(201).json(toDto(row as DeliveryRow));
 });
 
 router.get("/deliveries/:id", requireAuth, async (req, res) => {
@@ -102,47 +139,59 @@ router.get("/deliveries/:id", requireAuth, async (req, res) => {
     res.status(404).json({ error: "Delivery not found" });
     return;
   }
-  res.json(row);
+  res.json(toDto(row as DeliveryRow));
 });
 
-router.patch("/deliveries/:id", requireAuth, requireManager, async (req, res) => {
-  const id = Number(req.params["id"]);
-  const { status, notes, phone, address, proofNote, deliveredAt } = req.body as {
-    status?: string;
-    notes?: string;
-    phone?: string;
-    address?: string;
-    proofNote?: string | null;
-    deliveredAt?: string | null;
-  };
+router.patch(
+  "/deliveries/:id",
+  requireAuth,
+  requireManager,
+  async (req, res) => {
+    const id = Number(req.params["id"]);
+    const body = req.body as {
+      status?: string;
+      notes?: string | null;
+      phone?: string | null;
+      customerPhone?: string | null;
+      address?: string | null;
+      deliveryAddress?: string | null;
+      scheduledDate?: string | null;
+      proofNote?: string | null;
+      deliveredAt?: string | null;
+    };
 
-  const updates: Record<string, unknown> = {};
-  if (status) {
-    updates["status"] = status;
-    // Auto-stamp deliveredAt when client transitions to delivered without sending it
-    if (status === "delivered" && deliveredAt === undefined) {
-      updates["deliveredAt"] = new Date();
+    const updates: Record<string, unknown> = {};
+    if (body.status) {
+      updates["status"] = body.status;
+      if (body.status === "delivered" && body.deliveredAt === undefined) {
+        updates["deliveredAt"] = new Date();
+      }
     }
-  }
-  if (notes !== undefined) updates["notes"] = notes;
-  if (phone !== undefined) updates["phone"] = phone;
-  if (address !== undefined) updates["address"] = address;
-  if (proofNote !== undefined) updates["proofNote"] = proofNote;
-  if (deliveredAt !== undefined) {
-    updates["deliveredAt"] = deliveredAt ? new Date(deliveredAt) : null;
-  }
+    if (body.notes !== undefined) updates["notes"] = body.notes;
+    const phone = body.customerPhone ?? body.phone;
+    if (phone !== undefined) updates["phone"] = phone;
+    const address = body.deliveryAddress ?? body.address;
+    if (address !== undefined) updates["address"] = address;
+    if (body.scheduledDate !== undefined) updates["date"] = body.scheduledDate;
+    if (body.proofNote !== undefined) updates["proofNote"] = body.proofNote;
+    if (body.deliveredAt !== undefined) {
+      updates["deliveredAt"] = body.deliveredAt
+        ? new Date(body.deliveredAt)
+        : null;
+    }
 
-  const [row] = await db
-    .update(deliveriesTable)
-    .set(updates)
-    .where(eq(deliveriesTable.id, id))
-    .returning();
+    const [row] = await db
+      .update(deliveriesTable)
+      .set(updates)
+      .where(eq(deliveriesTable.id, id))
+      .returning();
 
-  if (!row) {
-    res.status(404).json({ error: "Delivery not found" });
-    return;
-  }
-  res.json(row);
-});
+    if (!row) {
+      res.status(404).json({ error: "Delivery not found" });
+      return;
+    }
+    res.json(toDto(row as DeliveryRow));
+  },
+);
 
 export default router;

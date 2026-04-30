@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { eq, desc, gte, lte, and, asc, gt } from "drizzle-orm";
+import { eq, desc, gte, lte, and, asc, gt, like, sql } from "drizzle-orm";
 import { db } from "../lib/db.js";
 import { requireAuth } from "../middlewares/auth.js";
 import { logActivity } from "../lib/activity-log.js";
@@ -15,12 +15,23 @@ import {
 
 const router = Router();
 
-let invoiceCounter = 1000;
-
-function generateInvoiceNo(): string {
-  const date = new Date();
-  const yyyymmdd = date.toISOString().slice(0, 10).replace(/-/g, "");
-  return `INV-${yyyymmdd}-${String(++invoiceCounter).padStart(4, "0")}`;
+async function nextInvoiceNo(
+  tx: { execute: typeof db.execute },
+  yyyymmdd: string,
+): Promise<string> {
+  // Derive next sequence by inspecting the highest invoice number recorded
+  // for today directly in the DB. Combined with the unique constraint on
+  // sales.invoice_no, this is durable across process restarts and resists
+  // concurrent inserts (the caller retries on unique-violation).
+  const prefix = `INV-${yyyymmdd}-`;
+  const rows = await tx.execute(
+    sql`SELECT MAX(CAST(SUBSTRING(invoice_no FROM ${prefix.length + 1}) AS INTEGER)) AS max_seq
+        FROM sales WHERE invoice_no LIKE ${prefix + "%"}`,
+  );
+  const r = rows.rows?.[0] as { max_seq: number | string | null } | undefined;
+  const lastSeq = r?.max_seq == null ? 0 : Number(r.max_seq);
+  const next = (Number.isFinite(lastSeq) ? lastSeq : 0) + 1;
+  return `${prefix}${String(next).padStart(4, "0")}`;
 }
 
 router.get("/sales", requireAuth, async (req, res) => {
@@ -297,13 +308,18 @@ router.post("/sales", requireAuth, async (req, res) => {
     return;
   }
   const status = paid >= totalAmount ? "completed" : paid > 0 ? "partial" : "credit";
-  const invoiceNo = generateInvoiceNo();
+  const yyyymmdd = (date ?? new Date().toISOString().slice(0, 10)).replace(
+    /-/g,
+    "",
+  );
 
-  const result = await db.transaction(async (tx) => {
-    const [sale] = await tx
-      .insert(salesTable)
-      .values({
-        invoiceNo,
+  const runOnce = async () =>
+    db.transaction(async (tx) => {
+      const invoiceNo = await nextInvoiceNo(tx, yyyymmdd);
+      const [sale] = await tx
+        .insert(salesTable)
+        .values({
+          invoiceNo,
         customerId,
         date,
         subtotal: String(subtotal),
@@ -398,8 +414,28 @@ router.post("/sales", requireAuth, async (req, res) => {
       }
     }
 
-    return sale;
-  });
+      return sale;
+    });
+
+  let result: Awaited<ReturnType<typeof runOnce>>;
+  let attempts = 0;
+  while (true) {
+    try {
+      result = await runOnce();
+      break;
+    } catch (err) {
+      const code =
+        (err as { code?: string } | undefined)?.code ??
+        (err as { cause?: { code?: string } } | undefined)?.cause?.code;
+      // Postgres unique-violation: invoice number was claimed by a concurrent
+      // request. Retry a few times to pick the next sequence.
+      if (code === "23505" && attempts < 5) {
+        attempts++;
+        continue;
+      }
+      throw err;
+    }
+  }
 
   await logActivity(
     req.user?.userId,
