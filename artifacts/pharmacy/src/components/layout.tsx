@@ -59,10 +59,19 @@ interface NavGroup {
 }
 
 const ROLE_RANK: Record<Role, number> = { cashier: 0, pharmacist: 1, admin: 2 };
+const ROLE_DISPLAY: Record<Role, string> = {
+  admin: "Admin",
+  pharmacist: "Manager",
+  cashier: "Cashier",
+};
 
 function hasAccess(userRole: string, minRole?: Role) {
   if (!minRole) return true;
   return (ROLE_RANK[userRole as Role] ?? 0) >= ROLE_RANK[minRole];
+}
+
+function getRoleDisplay(role?: string) {
+  return ROLE_DISPLAY[(role as Role) ?? "cashier"] ?? role ?? "Cashier";
 }
 
 const navGroups: NavGroup[] = [
@@ -246,7 +255,7 @@ export function Layout({ children }: { children: ReactNode }) {
               <DropdownMenuContent align="end">
                 <div className="px-3 py-2">
                   <p className="text-sm font-medium">{user?.fullName}</p>
-                  <p className="text-xs text-muted-foreground capitalize">{user?.role}</p>
+                  <p className="text-xs text-muted-foreground capitalize">{getRoleDisplay(user?.role)}</p>
                 </div>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem

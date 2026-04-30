@@ -430,6 +430,27 @@ export const insertSaleSchema = createInsertSchema(salesTable).omit({
 export type InsertSale = z.infer<typeof insertSaleSchema>;
 export type Sale = typeof salesTable.$inferSelect;
 
+// ─── Prescriptions (for controlled drug sales) ────────────────────────────────
+
+export const prescriptionsTable = pgTable("prescriptions", {
+  id: serial("id").primaryKey(),
+  saleId: integer("sale_id")
+    .notNull()
+    .references(() => salesTable.id),
+  doctorName: text("doctor_name").notNull(),
+  doctorLicense: text("doctor_license"),
+  prescriptionDate: date("prescription_date").notNull(),
+  patientName: text("patient_name"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertPrescriptionSchema = createInsertSchema(
+  prescriptionsTable
+).omit({ id: true, createdAt: true });
+export type InsertPrescription = z.infer<typeof insertPrescriptionSchema>;
+export type Prescription = typeof prescriptionsTable.$inferSelect;
+
 // ─── Sale Items ───────────────────────────────────────────────────────────────
 
 export const saleItemsTable = pgTable("sale_items", {
@@ -442,7 +463,15 @@ export const saleItemsTable = pgTable("sale_items", {
     .references(() => medicinesTable.id),
   batchId: integer("batch_id").references(() => batchesTable.id),
   batchNo: text("batch_no"),
+  saleUnit: text("sale_unit").notNull().default("unit"),
+  quantityPacks: numeric("quantity_packs", { precision: 10, scale: 3 })
+    .notNull()
+    .default("0"),
   quantityUnits: integer("quantity_units").notNull().default(0),
+  conversionFactor: integer("conversion_factor").notNull().default(1),
+  salePricePack: numeric("sale_price_pack", { precision: 12, scale: 4 })
+    .notNull()
+    .default("0"),
   salePriceUnit: numeric("sale_price_unit", { precision: 12, scale: 4 })
     .notNull()
     .default("0"),
@@ -495,7 +524,15 @@ export const saleReturnItemsTable = pgTable("sale_return_items", {
     .references(() => medicinesTable.id),
   batchId: integer("batch_id").references(() => batchesTable.id),
   batchNo: text("batch_no"),
+  saleUnit: text("sale_unit").notNull().default("unit"),
+  quantityPacks: numeric("quantity_packs", { precision: 10, scale: 3 })
+    .notNull()
+    .default("0"),
   quantityUnits: integer("quantity_units").notNull().default(0),
+  conversionFactor: integer("conversion_factor").notNull().default(1),
+  salePricePack: numeric("sale_price_pack", { precision: 12, scale: 4 })
+    .notNull()
+    .default("0"),
   salePriceUnit: numeric("sale_price_unit", { precision: 12, scale: 4 })
     .notNull()
     .default("0"),
@@ -580,8 +617,13 @@ export const stockAuditItemsTable = pgTable("stock_audit_items", {
     .notNull()
     .references(() => medicinesTable.id),
   batchId: integer("batch_id").references(() => batchesTable.id),
-  systemCount: integer("system_count").notNull().default(0),
-  physicalCount: integer("physical_count").notNull().default(0),
+  conversionFactor: integer("conversion_factor").notNull().default(1),
+  systemCountUnits: integer("system_count_units").notNull().default(0),
+  physicalCountPacks: numeric("physical_count_packs", { precision: 10, scale: 3 })
+    .notNull()
+    .default("0"),
+  physicalCountUnits: integer("physical_count_units").notNull().default(0),
+  physicalTotalUnits: integer("physical_total_units").notNull().default(0),
   variance: integer("variance").notNull().default(0),
   notes: text("notes"),
   createdAt: timestamp("created_at").notNull().defaultNow(),

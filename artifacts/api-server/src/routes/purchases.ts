@@ -86,8 +86,10 @@ router.post("/purchases", requireAuth, requirePharmacist, async (req, res) => {
         ...item,
         quantityPacks: item.packsReceived,
         quantityUnits,
+        conversionFactor: cf,
         purchasePriceUnit: item.purchasePrice,
         salePriceUnit: item.salePrice,
+        salePricePackCalc: item.salePrice * cf,
         totalAmount: String(itemTotal),
       };
     })
@@ -155,7 +157,7 @@ router.post("/purchases", requireAuth, requirePharmacist, async (req, res) => {
         .set({
           purchasePriceUnit: String(item.purchasePriceUnit),
           salePriceUnit: String(item.salePriceUnit),
-          salePricePack: String(item.salePriceUnit),
+          salePricePack: String(item.salePricePackCalc),
         })
         .where(eq(medicinesTable.id, item.medicineId));
     }

@@ -8,6 +8,7 @@ import {
   batchesTable,
   medicinesTable,
 } from "@workspace/db";
+import { logActivity } from "../lib/activity-log.js";
 
 const router = Router();
 
@@ -26,7 +27,8 @@ router.post("/stock-audits", requireAuth, requirePharmacist, async (req, res) =>
     items: Array<{
       medicineId: number;
       batchId?: number;
-      physicalCount: number;
+      physicalCountPacks?: number;
+      physicalCountUnits?: number;
     }>;
   };
 
@@ -41,25 +43,39 @@ router.post("/stock-audits", requireAuth, requirePharmacist, async (req, res) =>
 
   const auditItems = [];
   for (const item of items) {
-    let systemCount = 0;
+    const [med] = await db
+      .select({ unitsPerPack: medicinesTable.unitsPerPack })
+      .from(medicinesTable)
+      .where(eq(medicinesTable.id, item.medicineId))
+      .limit(1);
+    const cf = Number(med?.unitsPerPack ?? 1);
+
+    let systemCountUnits = 0;
     if (item.batchId) {
       const [batch] = await db
         .select()
         .from(batchesTable)
         .where(eq(batchesTable.id, item.batchId))
         .limit(1);
-      systemCount = batch?.quantityUnits ?? 0;
+      systemCountUnits = batch?.quantityUnits ?? 0;
     }
 
-    const variance = item.physicalCount - systemCount;
+    const packs = item.physicalCountPacks ?? 0;
+    const units = item.physicalCountUnits ?? 0;
+    const physicalTotalUnits = Math.round(packs * cf) + units;
+    const variance = physicalTotalUnits - systemCountUnits;
+
     const [auditItem] = await db
       .insert(stockAuditItemsTable)
       .values({
         auditId: audit.id,
         medicineId: item.medicineId,
         batchId: item.batchId,
-        systemCount,
-        physicalCount: item.physicalCount,
+        conversionFactor: cf,
+        systemCountUnits,
+        physicalCountPacks: String(packs),
+        physicalCountUnits: units,
+        physicalTotalUnits,
         variance,
       })
       .returning();
@@ -80,6 +96,9 @@ router.post("/stock-audits", requireAuth, requirePharmacist, async (req, res) =>
       }
     }
   }
+
+  await logActivity(req.user?.userId, "stock_audit_created", "stock_audit", audit.id,
+    JSON.stringify({ date: audit.date, itemCount: auditItems.length }));
 
   res.status(201).json({ ...audit, items: auditItems });
 });
@@ -102,8 +121,11 @@ router.get("/stock-audits/:id", requireAuth, async (req, res) => {
       medicineId: stockAuditItemsTable.medicineId,
       medicineName: medicinesTable.name,
       batchId: stockAuditItemsTable.batchId,
-      systemCount: stockAuditItemsTable.systemCount,
-      physicalCount: stockAuditItemsTable.physicalCount,
+      conversionFactor: stockAuditItemsTable.conversionFactor,
+      systemCountUnits: stockAuditItemsTable.systemCountUnits,
+      physicalCountPacks: stockAuditItemsTable.physicalCountPacks,
+      physicalCountUnits: stockAuditItemsTable.physicalCountUnits,
+      physicalTotalUnits: stockAuditItemsTable.physicalTotalUnits,
       variance: stockAuditItemsTable.variance,
       notes: stockAuditItemsTable.notes,
     })

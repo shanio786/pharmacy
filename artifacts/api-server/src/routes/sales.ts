@@ -275,16 +275,29 @@ router.post("/sales", requireAuth, async (req, res) => {
       .returning();
 
     await tx.insert(saleItemsTable).values(
-      allocations.map((a) => ({
-        saleId: sale.id,
-        medicineId: a.medicineId,
-        batchId: a.batchId,
-        batchNo: a.batchNo,
-        quantityUnits: a.quantityUnits,
-        salePriceUnit: String(a.salePrice),
-        discountPct: String(a.discountPercent),
-        totalAmount: String(a.lineTotal),
-      }))
+      allocations.map((a) => {
+        const cf = a.unitsPerPack;
+        const pricePerPack =
+          a.saleUnit === "pack" ? a.salePrice : a.salePrice * cf;
+        const pricePerUnit =
+          a.saleUnit === "unit" ? a.salePrice : a.salePrice / cf;
+        const packsQty =
+          a.saleUnit === "pack" ? a.requestedQty : 0;
+        return {
+          saleId: sale.id,
+          medicineId: a.medicineId,
+          batchId: a.batchId,
+          batchNo: a.batchNo,
+          saleUnit: a.saleUnit,
+          quantityPacks: String(packsQty),
+          quantityUnits: a.quantityUnits,
+          conversionFactor: cf,
+          salePricePack: String(pricePerPack),
+          salePriceUnit: String(pricePerUnit),
+          discountPct: String(a.discountPercent),
+          totalAmount: String(a.lineTotal),
+        };
+      })
     );
 
     // Deduct stock per batch allocation inside the transaction

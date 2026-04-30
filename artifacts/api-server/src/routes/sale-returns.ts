@@ -55,7 +55,11 @@ router.post("/sale-returns", requireAuth, requirePharmacist, async (req, res) =>
       medicineId: number;
       batchId?: number;
       batchNo?: string;
+      saleUnit?: string;
+      quantityPacks?: number;
       quantityUnits: number;
+      conversionFactor?: number;
+      salePricePack?: number;
       salePriceUnit: number;
     }>;
   };
@@ -78,15 +82,23 @@ router.post("/sale-returns", requireAuth, requirePharmacist, async (req, res) =>
     .returning();
 
   await db.insert(saleReturnItemsTable).values(
-    items.map((item) => ({
-      saleReturnId: ret.id,
-      medicineId: item.medicineId,
-      batchId: item.batchId,
-      batchNo: item.batchNo,
-      quantityUnits: item.quantityUnits,
-      salePriceUnit: String(item.salePriceUnit),
-      totalAmount: String(item.quantityUnits * item.salePriceUnit),
-    }))
+    items.map((item) => {
+      const cf = item.conversionFactor ?? 1;
+      const pricePerPack = item.salePricePack ?? item.salePriceUnit * cf;
+      return {
+        saleReturnId: ret.id,
+        medicineId: item.medicineId,
+        batchId: item.batchId,
+        batchNo: item.batchNo,
+        saleUnit: item.saleUnit ?? "unit",
+        quantityPacks: String(item.quantityPacks ?? 0),
+        quantityUnits: item.quantityUnits,
+        conversionFactor: cf,
+        salePricePack: String(pricePerPack),
+        salePriceUnit: String(item.salePriceUnit),
+        totalAmount: String(item.quantityUnits * item.salePriceUnit),
+      };
+    })
   );
 
   for (const item of items) {

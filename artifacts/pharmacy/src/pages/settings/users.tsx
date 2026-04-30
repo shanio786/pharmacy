@@ -13,7 +13,16 @@ import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Edit, Trash2, Loader2 } from "lucide-react";
 
-const ROLES = ["admin", "pharmacist", "cashier"];
+const ROLES: Array<{ value: string; label: string }> = [
+  { value: "admin", label: "Admin" },
+  { value: "pharmacist", label: "Manager" },
+  { value: "cashier", label: "Cashier" },
+];
+const ROLE_LABEL: Record<string, string> = {
+  admin: "Admin",
+  pharmacist: "Manager",
+  cashier: "Cashier",
+};
 
 interface UserForm {
   username: string;
@@ -104,8 +113,8 @@ export default function UserManagementPage() {
                       <td className="px-4 py-3 font-mono text-sm">{u.username}</td>
                       <td className="px-4 py-3 font-medium">{u.fullName}</td>
                       <td className="px-4 py-3 text-center">
-                        <Badge variant={u.role === "admin" ? "default" : "secondary"} className="capitalize">
-                          {u.role}
+                        <Badge variant={u.role === "admin" ? "default" : "secondary"}>
+                          {ROLE_LABEL[u.role] ?? u.role}
                         </Badge>
                       </td>
                       <td className="px-4 py-3 text-center">
@@ -147,7 +156,7 @@ export default function UserManagementPage() {
               <Select value={form.role} onValueChange={(v) => setForm((p) => ({ ...p, role: v }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {ROLES.map((r) => <SelectItem key={r} value={r} className="capitalize">{r}</SelectItem>)}
+                  {ROLES.map((r) => <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
