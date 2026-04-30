@@ -311,3 +311,67 @@
     inset: -1px;
   }
 }
+
+/* ─── Thermal-receipt print styles ──────────────────────────────────────────
+ * When printing from the POS, only the .receipt-print element should appear,
+ * formatted for 80mm thermal paper (≈72mm printable width).
+ * --------------------------------------------------------------------------*/
+@media print {
+  @page {
+    size: 80mm auto;
+    margin: 0;
+  }
+
+  html, body {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+    color: #000 !important;
+    width: 80mm;
+  }
+
+  /* Hide everything by default while printing */
+  body * {
+    visibility: hidden;
+  }
+
+  /* Hide explicit no-print regions even if a parent becomes visible */
+  .no-print,
+  .no-print * {
+    display: none !important;
+  }
+
+  /* Reveal only the receipt subtree */
+  .receipt-print,
+  .receipt-print * {
+    visibility: visible;
+  }
+
+  /* Position the receipt at the top-left of the printable area */
+  .receipt-print {
+    position: absolute !important;
+    inset: 0 auto auto 0 !important;
+    width: 72mm !important;
+    max-width: 72mm !important;
+    padding: 2mm !important;
+    margin: 0 !important;
+    background: #fff !important;
+    color: #000 !important;
+    font-family: 'Courier New', ui-monospace, monospace !important;
+    font-size: 11px !important;
+    line-height: 1.25 !important;
+    box-shadow: none !important;
+    border: none !important;
+    border-radius: 0 !important;
+  }
+
+  .receipt-print table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+  }
+
+  .receipt-print th,
+  .receipt-print td {
+    padding: 1px 2px !important;
+  }
+}

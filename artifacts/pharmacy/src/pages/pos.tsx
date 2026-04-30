@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from "react";
-import { useListMedicines, useListCustomers, useCreateSale, useGetMedicineBatches } from "@workspace/api-client-react";
-import type { MedicineWithStock, Batch, Customer, CreateSaleBody, CreateSaleItemBody, SaleWithItems, SaleItem } from "@workspace/api-client-react";
+import { useListMedicines, useListCustomers, useCreateSale, useGetMedicineBatches, useGetSettings } from "@workspace/api-client-react";
+import type { MedicineWithStock, Batch, Customer, CreateSaleBody, CreateSaleItemBody, SaleWithItems, SaleItem, Settings } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -228,10 +228,12 @@ export default function POSPage() {
     search.length >= 2 ? { search } : undefined
   );
   const { data: customerData = [] } = useListCustomers();
+  const { data: settingsData } = useGetSettings();
   const createSale = useCreateSale();
 
   const medicines = medicineData as MedicineWithStock[];
   const customers = customerData as Customer[];
+  const settings = settingsData as Settings | undefined;
 
   const subtotal = cart.reduce((acc, item) => {
     const lineTotal = item.salePrice * item.quantity;
@@ -643,40 +645,115 @@ export default function POSPage() {
         onCancel={() => setShowPrescriptionDialog(false)}
       />
 
-      {/* Invoice Modal */}
+      {/* Invoice Modal - 80mm thermal receipt */}
       {showInvoice && lastSale && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-card rounded-xl shadow-2xl w-full max-w-sm">
-            <div className="p-4 space-y-2 print-area">
-              <div className="text-center">
-                <h2 className="font-bold text-lg">PharmaCare</h2>
-                <p className="text-xs text-muted-foreground">Sales Invoice</p>
-                <p className="text-xs font-medium mt-1">#{lastSale.invoiceNo}</p>
-                <p className="text-xs text-muted-foreground">{lastSale.date}</p>
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 print:static print:bg-transparent print:p-0">
+          <div className="bg-white dark:bg-card rounded-xl shadow-2xl w-full max-w-sm print:rounded-none print:shadow-none print:max-w-none">
+            <div className="receipt-print p-4 font-mono text-xs text-black bg-white" data-testid="receipt-print-area">
+              <div className="text-center space-y-0.5">
+                <h2 className="font-bold text-base leading-tight">{settings?.pharmacyName ?? "PharmaCare"}</h2>
+                {settings?.address && <p className="text-[10px] leading-tight">{settings.address}</p>}
+                {settings?.phone && <p className="text-[10px] leading-tight">Tel: {settings.phone}</p>}
+                {settings?.ntn && <p className="text-[10px] leading-tight">NTN: {settings.ntn}</p>}
+                {settings?.strn && <p className="text-[10px] leading-tight" data-testid="receipt-strn">STRN: {settings.strn}</p>}
+                {settings?.drugLicense && <p className="text-[10px] leading-tight">Drug Lic#: {settings.drugLicense}</p>}
               </div>
-              <Separator />
-              <div className="text-xs space-y-1">
-                {lastSale.items.map((item: SaleItem, i: number) => (
-                  <div key={i} className="flex justify-between">
-                    <span>{item.medicineName} x{item.quantity} {item.saleUnit}</span>
-                    <span>PKR {Number(item.totalAmount).toFixed(2)}</span>
-                  </div>
-                ))}
-              </div>
-              <Separator />
-              <div className="text-xs space-y-1">
+              <div className="border-t border-dashed border-black my-2" />
+              <div className="text-[10px] space-y-0.5">
                 <div className="flex justify-between">
-                  <span>Net Amount:</span>
-                  <span className="font-bold">PKR {Number(lastSale.totalAmount).toFixed(2)}</span>
+                  <span>Invoice#:</span>
+                  <span className="font-bold" data-testid="receipt-invoice-no">{lastSale.invoiceNo}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Date/Time:</span>
+                  <span data-testid="receipt-datetime">{format(new Date(lastSale.createdAt ?? lastSale.date), "yyyy-MM-dd HH:mm")}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Customer:</span>
+                  <span>{lastSale.customerName ?? "Walk-in"}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Payment:</span>
+                  <span className="capitalize">{lastSale.paymentMode}</span>
+                </div>
+              </div>
+              <div className="border-t border-dashed border-black my-2" />
+              <table className="w-full text-[10px]">
+                <thead>
+                  <tr className="border-b border-dashed border-black">
+                    <th className="text-left font-semibold pb-1">Item</th>
+                    <th className="text-right font-semibold pb-1 pl-1">Qty</th>
+                    <th className="text-right font-semibold pb-1 pl-1">Price</th>
+                    <th className="text-right font-semibold pb-1 pl-1">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {lastSale.items.map((item: SaleItem, i: number) => (
+                    <tr key={i} className="align-top">
+                      <td className="py-0.5 pr-1">
+                        <div className="leading-tight">{item.medicineName}</div>
+                        {item.batchNo && <div className="text-[9px] opacity-70">B: {item.batchNo}</div>}
+                      </td>
+                      <td className="text-right py-0.5 pl-1">{Number(item.quantity)} {item.saleUnit === "pack" ? "pk" : "u"}</td>
+                      <td className="text-right py-0.5 pl-1">{Number(item.salePrice).toFixed(2)}</td>
+                      <td className="text-right py-0.5 pl-1">{Number(item.totalAmount).toFixed(2)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <div className="border-t border-dashed border-black my-2" />
+              <div className="text-[10px] space-y-0.5">
+                <div className="flex justify-between">
+                  <span>Subtotal:</span>
+                  <span>PKR {Number(lastSale.subtotal).toFixed(2)}</span>
+                </div>
+                {Number(lastSale.discountAmount) > 0 && (
+                  <div className="flex justify-between">
+                    <span>Discount:</span>
+                    <span>- PKR {Number(lastSale.discountAmount).toFixed(2)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between font-bold text-sm border-t border-black pt-1 mt-1">
+                  <span>NET TOTAL:</span>
+                  <span data-testid="receipt-total">PKR {Number(lastSale.totalAmount).toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Paid:</span>
                   <span>PKR {Number(lastSale.paidAmount).toFixed(2)}</span>
                 </div>
+                {Number(lastSale.paidAmount) > Number(lastSale.totalAmount) && (
+                  <div className="flex justify-between">
+                    <span>Change:</span>
+                    <span>PKR {(Number(lastSale.paidAmount) - Number(lastSale.totalAmount)).toFixed(2)}</span>
+                  </div>
+                )}
+                {Number(lastSale.paidAmount) < Number(lastSale.totalAmount) && (
+                  <div className="flex justify-between">
+                    <span>Balance Due:</span>
+                    <span>PKR {(Number(lastSale.totalAmount) - Number(lastSale.paidAmount)).toFixed(2)}</span>
+                  </div>
+                )}
               </div>
+              {settings?.fbrEnabled && settings.fbrPosId && (
+                <>
+                  <div className="border-t border-dashed border-black my-2" />
+                  <div className="text-center text-[10px] leading-tight" data-testid="receipt-fbr">
+                    <p className="font-bold">FBR POS Invoice</p>
+                    <p>POS ID: {settings.fbrPosId}</p>
+                    <p className="opacity-70">Verify at fbr.gov.pk</p>
+                  </div>
+                </>
+              )}
+              {settings?.receiptFooter && (
+                <>
+                  <div className="border-t border-dashed border-black my-2" />
+                  <p className="text-center text-[10px] leading-tight">{settings.receiptFooter}</p>
+                </>
+              )}
+              <div className="text-center text-[9px] opacity-70 mt-2">--- end of receipt ---</div>
             </div>
-            <div className="flex gap-2 p-3 border-t">
-              <Button size="sm" variant="outline" onClick={() => window.print()} className="flex-1">
+            <div className="flex gap-2 p-3 border-t no-print">
+              <Button size="sm" variant="outline" onClick={() => window.print()} className="flex-1" data-testid="button-print-receipt">
                 <Printer className="w-3 h-3 mr-1" />Print
               </Button>
               <Button size="sm" onClick={() => setShowInvoice(false)} className="flex-1" data-testid="button-close-invoice">

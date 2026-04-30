@@ -23,7 +23,10 @@ export default function GeneralSettingsPage() {
     phone: null,
     email: null,
     ntn: null,
+    strn: null,
     drugLicense: null,
+    fbrEnabled: false,
+    fbrPosId: null,
     taxPercent: 0,
     receiptFooter: null,
     defaultSaleUnit: "unit",
@@ -42,7 +45,10 @@ export default function GeneralSettingsPage() {
         phone: s.phone ?? null,
         email: s.email ?? null,
         ntn: s.ntn ?? null,
+        strn: s.strn ?? null,
         drugLicense: s.drugLicense ?? null,
+        fbrEnabled: s.fbrEnabled ?? false,
+        fbrPosId: s.fbrPosId ?? null,
         taxPercent: s.taxPercent ?? 0,
         receiptFooter: s.receiptFooter ?? null,
         defaultSaleUnit: s.defaultSaleUnit ?? "unit",
@@ -102,10 +108,14 @@ export default function GeneralSettingsPage() {
             <Label>Address</Label>
             <Input value={form.address ?? ""} onChange={f("address")} placeholder="Full pharmacy address" />
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-3 gap-4">
             <div className="space-y-1">
               <Label>NTN (Tax Number)</Label>
               <Input value={form.ntn ?? ""} onChange={f("ntn")} placeholder="e.g. 1234567-8" data-testid="input-ntn" />
+            </div>
+            <div className="space-y-1">
+              <Label>STRN (Sales Tax Reg#)</Label>
+              <Input value={form.strn ?? ""} onChange={f("strn")} placeholder="e.g. 17-12-3456-789-12" data-testid="input-strn" />
             </div>
             <div className="space-y-1">
               <Label>Drug License#</Label>
@@ -116,6 +126,37 @@ export default function GeneralSettingsPage() {
             <Label>Receipt Footer Text</Label>
             <Input value={form.receiptFooter ?? ""} onChange={f("receiptFooter")} placeholder="Thank you for your purchase!" />
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm">FBR POS Integration</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <Label>Enable FBR POS Integration</Label>
+              <p className="text-xs text-muted-foreground">Mark sales receipts with FBR POS ID for tax compliance</p>
+            </div>
+            <Switch
+              checked={form.fbrEnabled ?? false}
+              onCheckedChange={(v) => setForm((p) => ({ ...p, fbrEnabled: v }))}
+              data-testid="switch-fbr-enabled"
+            />
+          </div>
+          {form.fbrEnabled && (
+            <div className="space-y-1">
+              <Label>FBR POS Registration ID</Label>
+              <Input
+                value={form.fbrPosId ?? ""}
+                onChange={f("fbrPosId")}
+                placeholder="e.g. POS-FBR-1234567"
+                data-testid="input-fbr-pos-id"
+              />
+              <p className="text-xs text-muted-foreground">Provided by FBR after POS registration. Printed on each receipt.</p>
+            </div>
+          )}
         </CardContent>
       </Card>
 

@@ -2836,7 +2836,13 @@ components:
           type: ["string", "null"]
         ntn:
           type: ["string", "null"]
+        strn:
+          type: ["string", "null"]
         drugLicense:
+          type: ["string", "null"]
+        fbrEnabled:
+          type: boolean
+        fbrPosId:
           type: ["string", "null"]
         taxPercent:
           type: number
@@ -2852,7 +2858,7 @@ components:
           type: integer
         expiryAlertDays:
           type: integer
-      required: [pharmacyName, taxPercent, defaultSaleUnit, batchExpiryRequired, showPackQtyInReports, lowStockDays, expiryAlertDays]
+      required: [pharmacyName, taxPercent, defaultSaleUnit, batchExpiryRequired, showPackQtyInReports, lowStockDays, expiryAlertDays, fbrEnabled]
 
     UpdateSettingsBody:
       type: object
@@ -2867,7 +2873,13 @@ components:
           type: ["string", "null"]
         ntn:
           type: ["string", "null"]
+        strn:
+          type: ["string", "null"]
         drugLicense:
+          type: ["string", "null"]
+        fbrEnabled:
+          type: boolean
+        fbrPosId:
           type: ["string", "null"]
         taxPercent:
           type: number

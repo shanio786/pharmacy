@@ -682,6 +682,7 @@ export const settingsTable = pgTable("settings", {
   lowStockDays: integer("low_stock_days").notNull().default(30),
   fbrEnabled: boolean("fbr_enabled").notNull().default(false),
   fbrPosId: text("fbr_pos_id"),
+  strn: text("strn"),
   currency: text("currency").notNull().default("PKR"),
   expiryAlertDays: integer("expiry_alert_days").notNull().default(90),
   lowStockThreshold: integer("low_stock_threshold").notNull().default(10),

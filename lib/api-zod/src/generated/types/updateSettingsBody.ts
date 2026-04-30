@@ -17,7 +17,12 @@ export interface UpdateSettingsBody {
   /** @nullable */
   ntn?: string | null;
   /** @nullable */
+  strn?: string | null;
+  /** @nullable */
   drugLicense?: string | null;
+  fbrEnabled?: boolean;
+  /** @nullable */
+  fbrPosId?: string | null;
   taxPercent?: number;
   /** @nullable */
   receiptFooter?: string | null;
