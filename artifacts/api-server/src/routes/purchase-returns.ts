@@ -53,6 +53,27 @@ router.post("/purchase-returns", requireAuth, requireManager, async (req, res) =
     }>;
   };
 
+  if (!Array.isArray(items) || items.length === 0) {
+    res.status(400).json({ error: "items are required" });
+    return;
+  }
+  for (const it of items) {
+    const qty = it.returnQuantity ?? it.quantityUnits;
+    if (!Number.isFinite(qty) || (qty as number) <= 0) {
+      res
+        .status(400)
+        .json({ error: "Each item return quantity must be a positive number" });
+      return;
+    }
+    const price = it.purchasePrice ?? it.purchasePriceUnit;
+    if (price != null && (!Number.isFinite(price) || (price as number) < 0)) {
+      res
+        .status(400)
+        .json({ error: "Each item purchase price must be a non-negative number" });
+      return;
+    }
+  }
+
   const normalizedItems = await Promise.all(items.map(async (item) => {
     const qty = item.returnQuantity ?? item.quantityUnits ?? 0;
     const pricePerUnit = item.purchasePrice ?? item.purchasePriceUnit ?? 0;

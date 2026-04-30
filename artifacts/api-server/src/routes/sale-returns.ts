@@ -66,6 +66,35 @@ router.post("/sale-returns", requireAuth, requireManager, async (req, res) => {
     }>;
   };
 
+  if (!Array.isArray(items) || items.length === 0) {
+    res.status(400).json({ error: "items are required" });
+    return;
+  }
+  for (const it of items) {
+    const cf = it.conversionFactor ?? 1;
+    const saleUnit = it.saleUnit ?? "unit";
+    const requestedQty = it.quantityPacks ?? it.quantity ?? 0;
+    const computedUnits =
+      it.quantityUnits != null
+        ? it.quantityUnits
+        : saleUnit === "pack"
+          ? Math.round(requestedQty * cf)
+          : requestedQty;
+    if (!Number.isFinite(computedUnits) || computedUnits <= 0) {
+      res
+        .status(400)
+        .json({ error: "Each item return quantity must be a positive number" });
+      return;
+    }
+    const price = it.salePrice ?? it.salePriceUnit ?? it.salePricePack;
+    if (price != null && (!Number.isFinite(price) || (price as number) < 0)) {
+      res
+        .status(400)
+        .json({ error: "Each item sale price must be a non-negative number" });
+      return;
+    }
+  }
+
   const normalizedItems = items.map((item) => {
     const cf = item.conversionFactor ?? 1;
     const saleUnit = item.saleUnit ?? "unit";
