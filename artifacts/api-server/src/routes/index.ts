@@ -1,8 +1,40 @@
 import { Router, type IRouter } from "express";
-import healthRouter from "./health";
+import healthRouter from "./health.js";
+import authRouter from "./auth.js";
+import usersRouter from "./users.js";
+import mastersRouter from "./masters.js";
+import medicinesRouter from "./medicines.js";
+import suppliersRouter from "./suppliers.js";
+import customersRouter from "./customers.js";
+import purchasesRouter from "./purchases.js";
+import purchaseReturnsRouter from "./purchase-returns.js";
+import salesRouter from "./sales.js";
+import saleReturnsRouter from "./sale-returns.js";
+import missedSalesRouter from "./missed-sales.js";
+import deliveriesRouter from "./deliveries.js";
+import stockAuditsRouter from "./stock-audits.js";
+import settingsRouter from "./settings.js";
+import dashboardRouter from "./dashboard.js";
+import reportsRouter from "./reports.js";
 
 const router: IRouter = Router();
 
 router.use(healthRouter);
+router.use(authRouter);
+router.use(usersRouter);
+router.use(mastersRouter);
+router.use(medicinesRouter);
+router.use(suppliersRouter);
+router.use(customersRouter);
+router.use(purchasesRouter);
+router.use(purchaseReturnsRouter);
+router.use(salesRouter);
+router.use(saleReturnsRouter);
+router.use(missedSalesRouter);
+router.use(deliveriesRouter);
+router.use(stockAuditsRouter);
+router.use(settingsRouter);
+router.use(dashboardRouter);
+router.use(reportsRouter);
 
 export default router;

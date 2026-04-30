@@ -1,22 +1,41 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: PharmaCare Pharmacy Management System API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
-    description: Health operations
+  - name: auth
+  - name: users
+  - name: categories
+  - name: companies
+  - name: units
+  - name: racks
+  - name: genericNames
+  - name: medicines
+  - name: batches
+  - name: suppliers
+  - name: customers
+  - name: purchases
+  - name: sales
+  - name: saleReturns
+  - name: purchaseReturns
+  - name: missedSales
+  - name: deliveries
+  - name: stockAudits
+  - name: settings
+  - name: dashboard
+  - name: reports
+
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,6 +43,1601 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  # ─── AUTH ───────────────────────────────────────────────────────────────────
+  /auth/login:
+    post:
+      operationId: login
+      tags: [auth]
+      summary: Login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginBody"
+      responses:
+        "200":
+          description: Logged in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          description: Invalid credentials
+
+  /auth/logout:
+    post:
+      operationId: logout
+      tags: [auth]
+      summary: Logout
+      responses:
+        "200":
+          description: Logged out
+
+  /auth/me:
+    get:
+      operationId: getMe
+      tags: [auth]
+      summary: Get current user
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          description: Not authenticated
+
+  # ─── USERS ──────────────────────────────────────────────────────────────────
+  /users:
+    get:
+      operationId: listUsers
+      tags: [users]
+      summary: List all users
+      responses:
+        "200":
+          description: List of users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/User"
+    post:
+      operationId: createUser
+      tags: [users]
+      summary: Create a user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateUserBody"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+
+  /users/{id}:
+    get:
+      operationId: getUser
+      tags: [users]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: User
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+    patch:
+      operationId: updateUser
+      tags: [users]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateUserBody"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+    delete:
+      operationId: deleteUser
+      tags: [users]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  # ─── CATEGORIES ─────────────────────────────────────────────────────────────
+  /categories:
+    get:
+      operationId: listCategories
+      tags: [categories]
+      responses:
+        "200":
+          description: List of categories
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Category"
+    post:
+      operationId: createCategory
+      tags: [categories]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCategoryBody"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Category"
+
+  /categories/{id}:
+    patch:
+      operationId: updateCategory
+      tags: [categories]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCategoryBody"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Category"
+    delete:
+      operationId: deleteCategory
+      tags: [categories]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  # ─── COMPANIES ──────────────────────────────────────────────────────────────
+  /companies:
+    get:
+      operationId: listCompanies
+      tags: [companies]
+      responses:
+        "200":
+          description: List of companies
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Company"
+    post:
+      operationId: createCompany
+      tags: [companies]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCompanyBody"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Company"
+
+  /companies/{id}:
+    patch:
+      operationId: updateCompany
+      tags: [companies]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCompanyBody"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Company"
+    delete:
+      operationId: deleteCompany
+      tags: [companies]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  # ─── UNITS ──────────────────────────────────────────────────────────────────
+  /units:
+    get:
+      operationId: listUnits
+      tags: [units]
+      responses:
+        "200":
+          description: List of units
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Unit"
+    post:
+      operationId: createUnit
+      tags: [units]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateUnitBody"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Unit"
+
+  /units/{id}:
+    patch:
+      operationId: updateUnit
+      tags: [units]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateUnitBody"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Unit"
+    delete:
+      operationId: deleteUnit
+      tags: [units]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  # ─── RACKS ──────────────────────────────────────────────────────────────────
+  /racks:
+    get:
+      operationId: listRacks
+      tags: [racks]
+      responses:
+        "200":
+          description: List of racks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Rack"
+    post:
+      operationId: createRack
+      tags: [racks]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateRackBody"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Rack"
+
+  /racks/{id}:
+    patch:
+      operationId: updateRack
+      tags: [racks]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateRackBody"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Rack"
+    delete:
+      operationId: deleteRack
+      tags: [racks]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  # ─── GENERIC NAMES ──────────────────────────────────────────────────────────
+  /generic-names:
+    get:
+      operationId: listGenericNames
+      tags: [genericNames]
+      responses:
+        "200":
+          description: List of generic names
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/GenericName"
+    post:
+      operationId: createGenericName
+      tags: [genericNames]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateGenericNameBody"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericName"
+
+  /generic-names/{id}:
+    patch:
+      operationId: updateGenericName
+      tags: [genericNames]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateGenericNameBody"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericName"
+    delete:
+      operationId: deleteGenericName
+      tags: [genericNames]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  # ─── MEDICINES ──────────────────────────────────────────────────────────────
+  /medicines:
+    get:
+      operationId: listMedicines
+      tags: [medicines]
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: categoryId
+          in: query
+          schema:
+            type: integer
+        - name: companyId
+          in: query
+          schema:
+            type: integer
+        - name: genericNameId
+          in: query
+          schema:
+            type: integer
+        - name: isControlled
+          in: query
+          schema:
+            type: boolean
+        - name: lowStock
+          in: query
+          schema:
+            type: boolean
+      responses:
+        "200":
+          description: List of medicines with stock
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MedicineWithStock"
+    post:
+      operationId: createMedicine
+      tags: [medicines]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateMedicineBody"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Medicine"
+
+  /medicines/{id}:
+    get:
+      operationId: getMedicine
+      tags: [medicines]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Medicine
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MedicineWithStock"
+    patch:
+      operationId: updateMedicine
+      tags: [medicines]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateMedicineBody"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Medicine"
+    delete:
+      operationId: deleteMedicine
+      tags: [medicines]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /medicines/{id}/batches:
+    get:
+      operationId: getMedicineBatches
+      tags: [medicines]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Batches for medicine
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Batch"
+
+  /medicines/{id}/alternatives:
+    get:
+      operationId: getMedicineAlternatives
+      tags: [medicines]
+      summary: Get medicines with the same generic name
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Alternative medicines
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MedicineWithStock"
+
+  /medicines/adjust-stock:
+    post:
+      operationId: adjustStock
+      tags: [medicines]
+      summary: Manual stock adjustment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StockAdjustmentBody"
+      responses:
+        "200":
+          description: Adjustment recorded
+
+  # ─── SUPPLIERS ──────────────────────────────────────────────────────────────
+  /suppliers:
+    get:
+      operationId: listSuppliers
+      tags: [suppliers]
+      responses:
+        "200":
+          description: List of suppliers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Supplier"
+    post:
+      operationId: createSupplier
+      tags: [suppliers]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateSupplierBody"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Supplier"
+
+  /suppliers/{id}:
+    get:
+      operationId: getSupplier
+      tags: [suppliers]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Supplier
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Supplier"
+    patch:
+      operationId: updateSupplier
+      tags: [suppliers]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateSupplierBody"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Supplier"
+    delete:
+      operationId: deleteSupplier
+      tags: [suppliers]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /suppliers/{id}/ledger:
+    get:
+      operationId: getSupplierLedger
+      tags: [suppliers]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: dateFrom
+          in: query
+          schema:
+            type: string
+        - name: dateTo
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Supplier ledger
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LedgerResponse"
+
+  /suppliers/{id}/payment:
+    post:
+      operationId: paySupplier
+      tags: [suppliers]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PaymentBody"
+      responses:
+        "200":
+          description: Payment recorded
+
+  # ─── CUSTOMERS ──────────────────────────────────────────────────────────────
+  /customers:
+    get:
+      operationId: listCustomers
+      tags: [customers]
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of customers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Customer"
+    post:
+      operationId: createCustomer
+      tags: [customers]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCustomerBody"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Customer"
+
+  /customers/{id}:
+    get:
+      operationId: getCustomer
+      tags: [customers]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Customer
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Customer"
+    patch:
+      operationId: updateCustomer
+      tags: [customers]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCustomerBody"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Customer"
+    delete:
+      operationId: deleteCustomer
+      tags: [customers]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /customers/{id}/ledger:
+    get:
+      operationId: getCustomerLedger
+      tags: [customers]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: dateFrom
+          in: query
+          schema:
+            type: string
+        - name: dateTo
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Customer ledger
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LedgerResponse"
+
+  /customers/{id}/payment:
+    post:
+      operationId: receiveCustomerPayment
+      tags: [customers]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PaymentBody"
+      responses:
+        "200":
+          description: Payment recorded
+
+  # ─── PURCHASES / GRN ────────────────────────────────────────────────────────
+  /purchases:
+    get:
+      operationId: listPurchases
+      tags: [purchases]
+      parameters:
+        - name: supplierId
+          in: query
+          schema:
+            type: integer
+        - name: dateFrom
+          in: query
+          schema:
+            type: string
+        - name: dateTo
+          in: query
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of purchases
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Purchase"
+    post:
+      operationId: createPurchase
+      tags: [purchases]
+      summary: Create a GRN/Purchase order
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePurchaseBody"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Purchase"
+
+  /purchases/{id}:
+    get:
+      operationId: getPurchase
+      tags: [purchases]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Purchase with items
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PurchaseWithItems"
+
+  /purchases/sale-based-po:
+    post:
+      operationId: generateSaleBasedPO
+      tags: [purchases]
+      summary: Generate a purchase order based on sales in a date range
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SaleBasedPOBody"
+      responses:
+        "200":
+          description: Draft PO items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DraftPOItem"
+
+  # ─── PURCHASE RETURNS ────────────────────────────────────────────────────────
+  /purchase-returns:
+    get:
+      operationId: listPurchaseReturns
+      tags: [purchaseReturns]
+      parameters:
+        - name: supplierId
+          in: query
+          schema:
+            type: integer
+        - name: dateFrom
+          in: query
+          schema:
+            type: string
+        - name: dateTo
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of purchase returns
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PurchaseReturn"
+    post:
+      operationId: createPurchaseReturn
+      tags: [purchaseReturns]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePurchaseReturnBody"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PurchaseReturn"
+
+  /purchase-returns/{id}:
+    get:
+      operationId: getPurchaseReturn
+      tags: [purchaseReturns]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Purchase return with items
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PurchaseReturnWithItems"
+
+  # ─── SALES / POS ────────────────────────────────────────────────────────────
+  /sales:
+    get:
+      operationId: listSales
+      tags: [sales]
+      parameters:
+        - name: customerId
+          in: query
+          schema:
+            type: integer
+        - name: dateFrom
+          in: query
+          schema:
+            type: string
+        - name: dateTo
+          in: query
+          schema:
+            type: string
+        - name: paymentMode
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of sales
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Sale"
+    post:
+      operationId: createSale
+      tags: [sales]
+      summary: Create a sale (POS)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateSaleBody"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SaleWithItems"
+
+  /sales/{id}:
+    get:
+      operationId: getSale
+      tags: [sales]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Sale with items
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SaleWithItems"
+
+  # ─── SALE RETURNS ────────────────────────────────────────────────────────────
+  /sale-returns:
+    get:
+      operationId: listSaleReturns
+      tags: [saleReturns]
+      parameters:
+        - name: dateFrom
+          in: query
+          schema:
+            type: string
+        - name: dateTo
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of sale returns
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SaleReturn"
+    post:
+      operationId: createSaleReturn
+      tags: [saleReturns]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateSaleReturnBody"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SaleReturn"
+
+  /sale-returns/{id}:
+    get:
+      operationId: getSaleReturn
+      tags: [saleReturns]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Sale return with items
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SaleReturnWithItems"
+
+  # ─── MISSED SALES ────────────────────────────────────────────────────────────
+  /missed-sales:
+    get:
+      operationId: listMissedSales
+      tags: [missedSales]
+      parameters:
+        - name: dateFrom
+          in: query
+          schema:
+            type: string
+        - name: dateTo
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of missed sales
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MissedSale"
+    post:
+      operationId: createMissedSale
+      tags: [missedSales]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateMissedSaleBody"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MissedSale"
+
+  /missed-sales/{id}:
+    delete:
+      operationId: deleteMissedSale
+      tags: [missedSales]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  # ─── DELIVERIES ─────────────────────────────────────────────────────────────
+  /deliveries:
+    get:
+      operationId: listDeliveries
+      tags: [deliveries]
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+        - name: customerId
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of deliveries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Delivery"
+    post:
+      operationId: createDelivery
+      tags: [deliveries]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateDeliveryBody"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Delivery"
+
+  /deliveries/{id}:
+    get:
+      operationId: getDelivery
+      tags: [deliveries]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Delivery
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Delivery"
+    patch:
+      operationId: updateDelivery
+      tags: [deliveries]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateDeliveryBody"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Delivery"
+
+  # ─── STOCK AUDITS ────────────────────────────────────────────────────────────
+  /stock-audits:
+    get:
+      operationId: listStockAudits
+      tags: [stockAudits]
+      responses:
+        "200":
+          description: List of stock audits
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/StockAudit"
+    post:
+      operationId: createStockAudit
+      tags: [stockAudits]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateStockAuditBody"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StockAuditWithItems"
+
+  /stock-audits/{id}:
+    get:
+      operationId: getStockAudit
+      tags: [stockAudits]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Stock audit with items
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StockAuditWithItems"
+
+  # ─── SETTINGS ────────────────────────────────────────────────────────────────
+  /settings:
+    get:
+      operationId: getSettings
+      tags: [settings]
+      responses:
+        "200":
+          description: System settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Settings"
+    patch:
+      operationId: updateSettings
+      tags: [settings]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateSettingsBody"
+      responses:
+        "200":
+          description: Updated settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Settings"
+
+  # ─── DASHBOARD ────────────────────────────────────────────────────────────────
+  /dashboard/summary:
+    get:
+      operationId: getDashboardSummary
+      tags: [dashboard]
+      responses:
+        "200":
+          description: Dashboard KPI summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardSummary"
+
+  /dashboard/sales-chart:
+    get:
+      operationId: getSalesChart
+      tags: [dashboard]
+      parameters:
+        - name: days
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Daily sales for chart
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SalesChartPoint"
+
+  /dashboard/expiring-medicines:
+    get:
+      operationId: getExpiringMedicines
+      tags: [dashboard]
+      parameters:
+        - name: days
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Medicines expiring within N days
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ExpiringBatch"
+
+  /dashboard/low-stock:
+    get:
+      operationId: getLowStockMedicines
+      tags: [dashboard]
+      responses:
+        "200":
+          description: Medicines below reorder level
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MedicineWithStock"
+
+  # ─── REPORTS ─────────────────────────────────────────────────────────────────
+  /reports/sales:
+    get:
+      operationId: getSalesReport
+      tags: [reports]
+      parameters:
+        - name: dateFrom
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: dateTo
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: groupBy
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Sales report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SalesReport"
+
+  /reports/stock:
+    get:
+      operationId: getStockReport
+      tags: [reports]
+      parameters:
+        - name: categoryId
+          in: query
+          schema:
+            type: integer
+        - name: companyId
+          in: query
+          schema:
+            type: integer
+        - name: showPackQty
+          in: query
+          schema:
+            type: boolean
+      responses:
+        "200":
+          description: Stock report
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/StockReportItem"
+
+  /reports/purchase:
+    get:
+      operationId: getPurchaseReport
+      tags: [reports]
+      parameters:
+        - name: dateFrom
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: dateTo
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: supplierId
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Purchase report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PurchaseReport"
+
+  /reports/expiry:
+    get:
+      operationId: getExpiryReport
+      tags: [reports]
+      parameters:
+        - name: daysAhead
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Expiry report
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ExpiringBatch"
+
+  /reports/controlled-drugs:
+    get:
+      operationId: getControlledDrugsReport
+      tags: [reports]
+      parameters:
+        - name: dateFrom
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: dateTo
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Controlled drug movement report
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ControlledDrugEntry"
+
+  /reports/profit-loss:
+    get:
+      operationId: getProfitLossReport
+      tags: [reports]
+      parameters:
+        - name: dateFrom
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: dateTo
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Profit and loss report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProfitLossReport"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +1648,1253 @@ components:
       required:
         - status
 
+    # ─── AUTH ──────────────────────────────────────────────────────────────────
+    LoginBody:
+      type: object
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+      required: [username, password]
+
+    AuthResponse:
+      type: object
+      properties:
+        token:
+          type: string
+        user:
+          $ref: "#/components/schemas/User"
+      required: [token, user]
+
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+        username:
+          type: string
+        fullName:
+          type: string
+        role:
+          type: string
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+      required: [id, username, fullName, role, isActive, createdAt]
+
+    CreateUserBody:
+      type: object
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+        fullName:
+          type: string
+        role:
+          type: string
+        isActive:
+          type: boolean
+      required: [username, password, fullName, role]
+
+    UpdateUserBody:
+      type: object
+      properties:
+        fullName:
+          type: string
+        role:
+          type: string
+        isActive:
+          type: boolean
+        password:
+          type: ["string", "null"]
+
+    # ─── LOOKUP TABLES ──────────────────────────────────────────────────────────
+    Category:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        description:
+          type: ["string", "null"]
+      required: [id, name]
+
+    CreateCategoryBody:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: ["string", "null"]
+      required: [name]
+
+    Company:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        country:
+          type: ["string", "null"]
+      required: [id, name]
+
+    CreateCompanyBody:
+      type: object
+      properties:
+        name:
+          type: string
+        country:
+          type: ["string", "null"]
+      required: [name]
+
+    Unit:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+      required: [id, name]
+
+    CreateUnitBody:
+      type: object
+      properties:
+        name:
+          type: string
+      required: [name]
+
+    Rack:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        description:
+          type: ["string", "null"]
+      required: [id, name]
+
+    CreateRackBody:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: ["string", "null"]
+      required: [name]
+
+    GenericName:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+      required: [id, name]
+
+    CreateGenericNameBody:
+      type: object
+      properties:
+        name:
+          type: string
+      required: [name]
+
+    # ─── MEDICINES ─────────────────────────────────────────────────────────────
+    Medicine:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        genericNameId:
+          type: ["integer", "null"]
+        genericName:
+          type: ["string", "null"]
+        categoryId:
+          type: ["integer", "null"]
+        categoryName:
+          type: ["string", "null"]
+        companyId:
+          type: ["integer", "null"]
+        companyName:
+          type: ["string", "null"]
+        unitId:
+          type: ["integer", "null"]
+        unitName:
+          type: ["string", "null"]
+        rackId:
+          type: ["integer", "null"]
+        rackName:
+          type: ["string", "null"]
+        strength:
+          type: ["string", "null"]
+        packingLabel:
+          type: ["string", "null"]
+        conversionFactor:
+          type: integer
+        salePrice:
+          type: number
+        purchasePrice:
+          type: number
+        reorderLevel:
+          type: integer
+        isControlled:
+          type: boolean
+        defaultSaleUnit:
+          type: string
+        barcode:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+      required: [id, name, conversionFactor, salePrice, purchasePrice, reorderLevel, isControlled, defaultSaleUnit, createdAt]
+
+    MedicineWithStock:
+      allOf:
+        - $ref: "#/components/schemas/Medicine"
+        - type: object
+          properties:
+            totalUnits:
+              type: integer
+            totalPacks:
+              type: integer
+            nearestExpiry:
+              type: ["string", "null"]
+          required: [totalUnits, totalPacks]
+
+    CreateMedicineBody:
+      type: object
+      properties:
+        name:
+          type: string
+        genericNameId:
+          type: ["integer", "null"]
+        categoryId:
+          type: ["integer", "null"]
+        companyId:
+          type: ["integer", "null"]
+        unitId:
+          type: ["integer", "null"]
+        rackId:
+          type: ["integer", "null"]
+        strength:
+          type: ["string", "null"]
+        packingLabel:
+          type: ["string", "null"]
+        conversionFactor:
+          type: integer
+        salePrice:
+          type: number
+        purchasePrice:
+          type: number
+        reorderLevel:
+          type: integer
+        isControlled:
+          type: boolean
+        defaultSaleUnit:
+          type: string
+        barcode:
+          type: ["string", "null"]
+      required: [name, conversionFactor, salePrice, purchasePrice, reorderLevel, isControlled, defaultSaleUnit]
+
+    UpdateMedicineBody:
+      type: object
+      properties:
+        name:
+          type: string
+        genericNameId:
+          type: ["integer", "null"]
+        categoryId:
+          type: ["integer", "null"]
+        companyId:
+          type: ["integer", "null"]
+        unitId:
+          type: ["integer", "null"]
+        rackId:
+          type: ["integer", "null"]
+        strength:
+          type: ["string", "null"]
+        packingLabel:
+          type: ["string", "null"]
+        conversionFactor:
+          type: integer
+        salePrice:
+          type: number
+        purchasePrice:
+          type: number
+        reorderLevel:
+          type: integer
+        isControlled:
+          type: boolean
+        defaultSaleUnit:
+          type: string
+        barcode:
+          type: ["string", "null"]
+
+    Batch:
+      type: object
+      properties:
+        id:
+          type: integer
+        medicineId:
+          type: integer
+        batchNo:
+          type: string
+        expiryDate:
+          type: string
+        quantityUnits:
+          type: integer
+        purchasePrice:
+          type: number
+        salePrice:
+          type: number
+      required: [id, medicineId, batchNo, expiryDate, quantityUnits, purchasePrice, salePrice]
+
+    StockAdjustmentBody:
+      type: object
+      properties:
+        medicineId:
+          type: integer
+        batchId:
+          type: ["integer", "null"]
+        adjustmentUnits:
+          type: integer
+        reason:
+          type: string
+        note:
+          type: ["string", "null"]
+      required: [medicineId, adjustmentUnits, reason]
+
+    # ─── SUPPLIERS ─────────────────────────────────────────────────────────────
+    Supplier:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        contactPerson:
+          type: ["string", "null"]
+        phone:
+          type: ["string", "null"]
+        email:
+          type: ["string", "null"]
+        address:
+          type: ["string", "null"]
+        balance:
+          type: number
+        createdAt:
+          type: string
+      required: [id, name, balance, createdAt]
+
+    CreateSupplierBody:
+      type: object
+      properties:
+        name:
+          type: string
+        contactPerson:
+          type: ["string", "null"]
+        phone:
+          type: ["string", "null"]
+        email:
+          type: ["string", "null"]
+        address:
+          type: ["string", "null"]
+      required: [name]
+
+    # ─── CUSTOMERS ─────────────────────────────────────────────────────────────
+    Customer:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        phone:
+          type: ["string", "null"]
+        address:
+          type: ["string", "null"]
+        creditLimit:
+          type: number
+        balance:
+          type: number
+        createdAt:
+          type: string
+      required: [id, name, creditLimit, balance, createdAt]
+
+    CreateCustomerBody:
+      type: object
+      properties:
+        name:
+          type: string
+        phone:
+          type: ["string", "null"]
+        address:
+          type: ["string", "null"]
+        creditLimit:
+          type: number
+      required: [name]
+
+    LedgerResponse:
+      type: object
+      properties:
+        balance:
+          type: number
+        entries:
+          type: array
+          items:
+            $ref: "#/components/schemas/LedgerEntry"
+      required: [balance, entries]
+
+    LedgerEntry:
+      type: object
+      properties:
+        id:
+          type: integer
+        date:
+          type: string
+        description:
+          type: string
+        debit:
+          type: number
+        credit:
+          type: number
+        balance:
+          type: number
+        referenceType:
+          type: string
+        referenceId:
+          type: ["integer", "null"]
+      required: [id, date, description, debit, credit, balance, referenceType]
+
+    PaymentBody:
+      type: object
+      properties:
+        amount:
+          type: number
+        note:
+          type: ["string", "null"]
+        date:
+          type: ["string", "null"]
+      required: [amount]
+
+    # ─── PURCHASES ─────────────────────────────────────────────────────────────
+    Purchase:
+      type: object
+      properties:
+        id:
+          type: integer
+        supplierId:
+          type: ["integer", "null"]
+        supplierName:
+          type: ["string", "null"]
+        invoiceNo:
+          type: ["string", "null"]
+        date:
+          type: string
+        totalAmount:
+          type: number
+        status:
+          type: string
+        notes:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+      required: [id, date, totalAmount, status, createdAt]
+
+    PurchaseItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        medicineId:
+          type: integer
+        medicineName:
+          type: string
+        batchNo:
+          type: string
+        expiryDate:
+          type: string
+        packsReceived:
+          type: number
+        unitsReceived:
+          type: number
+        purchasePrice:
+          type: number
+        salePrice:
+          type: number
+        totalAmount:
+          type: number
+      required: [id, medicineId, medicineName, batchNo, expiryDate, packsReceived, unitsReceived, purchasePrice, salePrice, totalAmount]
+
+    PurchaseWithItems:
+      allOf:
+        - $ref: "#/components/schemas/Purchase"
+        - type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: "#/components/schemas/PurchaseItem"
+          required: [items]
+
+    CreatePurchaseBody:
+      type: object
+      properties:
+        supplierId:
+          type: ["integer", "null"]
+        invoiceNo:
+          type: ["string", "null"]
+        date:
+          type: string
+        notes:
+          type: ["string", "null"]
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/CreatePurchaseItemBody"
+      required: [date, items]
+
+    CreatePurchaseItemBody:
+      type: object
+      properties:
+        medicineId:
+          type: integer
+        batchNo:
+          type: string
+        expiryDate:
+          type: string
+        packsReceived:
+          type: number
+        purchasePrice:
+          type: number
+        salePrice:
+          type: number
+      required: [medicineId, batchNo, expiryDate, packsReceived, purchasePrice, salePrice]
+
+    SaleBasedPOBody:
+      type: object
+      properties:
+        dateFrom:
+          type: string
+        dateTo:
+          type: string
+        supplierId:
+          type: ["integer", "null"]
+      required: [dateFrom, dateTo]
+
+    DraftPOItem:
+      type: object
+      properties:
+        medicineId:
+          type: integer
+        medicineName:
+          type: string
+        companyName:
+          type: ["string", "null"]
+        unitsSold:
+          type: integer
+        suggestedPacks:
+          type: number
+        purchasePrice:
+          type: number
+      required: [medicineId, medicineName, unitsSold, suggestedPacks, purchasePrice]
+
+    # ─── PURCHASE RETURNS ──────────────────────────────────────────────────────
+    PurchaseReturn:
+      type: object
+      properties:
+        id:
+          type: integer
+        supplierId:
+          type: ["integer", "null"]
+        supplierName:
+          type: ["string", "null"]
+        date:
+          type: string
+        totalAmount:
+          type: number
+        notes:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+      required: [id, date, totalAmount, createdAt]
+
+    PurchaseReturnItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        medicineId:
+          type: integer
+        medicineName:
+          type: string
+        batchId:
+          type: ["integer", "null"]
+        batchNo:
+          type: ["string", "null"]
+        returnPacks:
+          type: number
+        returnUnits:
+          type: number
+        purchasePrice:
+          type: number
+        totalAmount:
+          type: number
+      required: [id, medicineId, medicineName, returnPacks, returnUnits, purchasePrice, totalAmount]
+
+    PurchaseReturnWithItems:
+      allOf:
+        - $ref: "#/components/schemas/PurchaseReturn"
+        - type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: "#/components/schemas/PurchaseReturnItem"
+          required: [items]
+
+    CreatePurchaseReturnBody:
+      type: object
+      properties:
+        supplierId:
+          type: ["integer", "null"]
+        date:
+          type: string
+        notes:
+          type: ["string", "null"]
+        inPacks:
+          type: boolean
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/CreatePurchaseReturnItemBody"
+      required: [date, items, inPacks]
+
+    CreatePurchaseReturnItemBody:
+      type: object
+      properties:
+        medicineId:
+          type: integer
+        batchId:
+          type: ["integer", "null"]
+        returnQuantity:
+          type: number
+        purchasePrice:
+          type: number
+      required: [medicineId, returnQuantity, purchasePrice]
+
+    # ─── SALES ─────────────────────────────────────────────────────────────────
+    Sale:
+      type: object
+      properties:
+        id:
+          type: integer
+        invoiceNo:
+          type: string
+        customerId:
+          type: ["integer", "null"]
+        customerName:
+          type: ["string", "null"]
+        date:
+          type: string
+        subtotal:
+          type: number
+        discountAmount:
+          type: number
+        totalAmount:
+          type: number
+        paidAmount:
+          type: number
+        changeAmount:
+          type: number
+        paymentMode:
+          type: string
+        notes:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+      required: [id, invoiceNo, date, subtotal, discountAmount, totalAmount, paidAmount, changeAmount, paymentMode, createdAt]
+
+    SaleItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        medicineId:
+          type: integer
+        medicineName:
+          type: string
+        batchId:
+          type: ["integer", "null"]
+        batchNo:
+          type: ["string", "null"]
+        saleUnit:
+          type: string
+        quantity:
+          type: number
+        unitQuantity:
+          type: number
+        salePrice:
+          type: number
+        discountPercent:
+          type: number
+        totalAmount:
+          type: number
+        isControlled:
+          type: boolean
+        prescriptionNote:
+          type: ["string", "null"]
+      required: [id, medicineId, medicineName, saleUnit, quantity, unitQuantity, salePrice, discountPercent, totalAmount, isControlled]
+
+    SaleWithItems:
+      allOf:
+        - $ref: "#/components/schemas/Sale"
+        - type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: "#/components/schemas/SaleItem"
+          required: [items]
+
+    CreateSaleBody:
+      type: object
+      properties:
+        customerId:
+          type: ["integer", "null"]
+        date:
+          type: string
+        discountAmount:
+          type: number
+        paidAmount:
+          type: number
+        paymentMode:
+          type: string
+        notes:
+          type: ["string", "null"]
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/CreateSaleItemBody"
+      required: [date, paidAmount, paymentMode, items]
+
+    CreateSaleItemBody:
+      type: object
+      properties:
+        medicineId:
+          type: integer
+        batchId:
+          type: ["integer", "null"]
+        saleUnit:
+          type: string
+        quantity:
+          type: number
+        salePrice:
+          type: number
+        discountPercent:
+          type: number
+        prescriptionNote:
+          type: ["string", "null"]
+      required: [medicineId, saleUnit, quantity, salePrice, discountPercent]
+
+    # ─── SALE RETURNS ──────────────────────────────────────────────────────────
+    SaleReturn:
+      type: object
+      properties:
+        id:
+          type: integer
+        saleId:
+          type: ["integer", "null"]
+        customerId:
+          type: ["integer", "null"]
+        customerName:
+          type: ["string", "null"]
+        date:
+          type: string
+        totalAmount:
+          type: number
+        notes:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+      required: [id, date, totalAmount, createdAt]
+
+    SaleReturnItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        medicineId:
+          type: integer
+        medicineName:
+          type: string
+        batchId:
+          type: ["integer", "null"]
+        quantity:
+          type: number
+        salePrice:
+          type: number
+        totalAmount:
+          type: number
+      required: [id, medicineId, medicineName, quantity, salePrice, totalAmount]
+
+    SaleReturnWithItems:
+      allOf:
+        - $ref: "#/components/schemas/SaleReturn"
+        - type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: "#/components/schemas/SaleReturnItem"
+          required: [items]
+
+    CreateSaleReturnBody:
+      type: object
+      properties:
+        saleId:
+          type: ["integer", "null"]
+        customerId:
+          type: ["integer", "null"]
+        date:
+          type: string
+        notes:
+          type: ["string", "null"]
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/CreateSaleReturnItemBody"
+      required: [date, items]
+
+    CreateSaleReturnItemBody:
+      type: object
+      properties:
+        medicineId:
+          type: integer
+        batchId:
+          type: ["integer", "null"]
+        quantity:
+          type: number
+        salePrice:
+          type: number
+      required: [medicineId, quantity, salePrice]
+
+    # ─── MISSED SALES ──────────────────────────────────────────────────────────
+    MissedSale:
+      type: object
+      properties:
+        id:
+          type: integer
+        medicineName:
+          type: string
+        genericName:
+          type: ["string", "null"]
+        quantityDemanded:
+          type: number
+        customerNote:
+          type: ["string", "null"]
+        date:
+          type: string
+        createdAt:
+          type: string
+      required: [id, medicineName, quantityDemanded, date, createdAt]
+
+    CreateMissedSaleBody:
+      type: object
+      properties:
+        medicineName:
+          type: string
+        genericName:
+          type: ["string", "null"]
+        quantityDemanded:
+          type: number
+        customerNote:
+          type: ["string", "null"]
+        date:
+          type: string
+      required: [medicineName, quantityDemanded, date]
+
+    # ─── DELIVERIES ────────────────────────────────────────────────────────────
+    Delivery:
+      type: object
+      properties:
+        id:
+          type: integer
+        saleId:
+          type: ["integer", "null"]
+        customerId:
+          type: ["integer", "null"]
+        customerName:
+          type: ["string", "null"]
+        customerPhone:
+          type: ["string", "null"]
+        deliveryAddress:
+          type: string
+        status:
+          type: string
+        scheduledDate:
+          type: ["string", "null"]
+        deliveredAt:
+          type: ["string", "null"]
+        proofNote:
+          type: ["string", "null"]
+        notes:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+      required: [id, deliveryAddress, status, createdAt]
+
+    CreateDeliveryBody:
+      type: object
+      properties:
+        saleId:
+          type: ["integer", "null"]
+        customerId:
+          type: ["integer", "null"]
+        deliveryAddress:
+          type: string
+        scheduledDate:
+          type: ["string", "null"]
+        notes:
+          type: ["string", "null"]
+      required: [deliveryAddress]
+
+    UpdateDeliveryBody:
+      type: object
+      properties:
+        status:
+          type: string
+        deliveredAt:
+          type: ["string", "null"]
+        proofNote:
+          type: ["string", "null"]
+        notes:
+          type: ["string", "null"]
+
+    # ─── STOCK AUDITS ──────────────────────────────────────────────────────────
+    StockAudit:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        date:
+          type: string
+        status:
+          type: string
+        notes:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+      required: [id, title, date, status, createdAt]
+
+    StockAuditItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        medicineId:
+          type: integer
+        medicineName:
+          type: string
+        systemUnits:
+          type: integer
+        physicalUnits:
+          type: integer
+        physicalPacks:
+          type: number
+        varianceUnits:
+          type: integer
+      required: [id, medicineId, medicineName, systemUnits, physicalUnits, physicalPacks, varianceUnits]
+
+    StockAuditWithItems:
+      allOf:
+        - $ref: "#/components/schemas/StockAudit"
+        - type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: "#/components/schemas/StockAuditItem"
+          required: [items]
+
+    CreateStockAuditBody:
+      type: object
+      properties:
+        title:
+          type: string
+        date:
+          type: string
+        notes:
+          type: ["string", "null"]
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/CreateStockAuditItemBody"
+      required: [title, date, items]
+
+    CreateStockAuditItemBody:
+      type: object
+      properties:
+        medicineId:
+          type: integer
+        physicalUnits:
+          type: integer
+        physicalPacks:
+          type: number
+      required: [medicineId, physicalUnits, physicalPacks]
+
+    # ─── SETTINGS ──────────────────────────────────────────────────────────────
+    Settings:
+      type: object
+      properties:
+        pharmacyName:
+          type: string
+        address:
+          type: ["string", "null"]
+        phone:
+          type: ["string", "null"]
+        email:
+          type: ["string", "null"]
+        ntn:
+          type: ["string", "null"]
+        drugLicense:
+          type: ["string", "null"]
+        taxPercent:
+          type: number
+        receiptFooter:
+          type: ["string", "null"]
+        defaultSaleUnit:
+          type: string
+        batchExpiryRequired:
+          type: boolean
+        showPackQtyInReports:
+          type: boolean
+        lowStockDays:
+          type: integer
+        expiryAlertDays:
+          type: integer
+      required: [pharmacyName, taxPercent, defaultSaleUnit, batchExpiryRequired, showPackQtyInReports, lowStockDays, expiryAlertDays]
+
+    UpdateSettingsBody:
+      type: object
+      properties:
+        pharmacyName:
+          type: string
+        address:
+          type: ["string", "null"]
+        phone:
+          type: ["string", "null"]
+        email:
+          type: ["string", "null"]
+        ntn:
+          type: ["string", "null"]
+        drugLicense:
+          type: ["string", "null"]
+        taxPercent:
+          type: number
+        receiptFooter:
+          type: ["string", "null"]
+        defaultSaleUnit:
+          type: string
+        batchExpiryRequired:
+          type: boolean
+        showPackQtyInReports:
+          type: boolean
+        lowStockDays:
+          type: integer
+        expiryAlertDays:
+          type: integer
+
+    # ─── DASHBOARD ─────────────────────────────────────────────────────────────
+    DashboardSummary:
+      type: object
+      properties:
+        todaySales:
+          type: number
+        todaySalesCount:
+          type: integer
+        todayPurchases:
+          type: number
+        monthSales:
+          type: number
+        lowStockCount:
+          type: integer
+        expiringCount:
+          type: integer
+        missedSalesToday:
+          type: integer
+        pendingDeliveries:
+          type: integer
+        totalMedicines:
+          type: integer
+        totalCustomers:
+          type: integer
+        totalSuppliers:
+          type: integer
+      required: [todaySales, todaySalesCount, todayPurchases, monthSales, lowStockCount, expiringCount, missedSalesToday, pendingDeliveries, totalMedicines, totalCustomers, totalSuppliers]
+
+    SalesChartPoint:
+      type: object
+      properties:
+        date:
+          type: string
+        amount:
+          type: number
+        count:
+          type: integer
+      required: [date, amount, count]
+
+    ExpiringBatch:
+      type: object
+      properties:
+        batchId:
+          type: integer
+        medicineId:
+          type: integer
+        medicineName:
+          type: string
+        batchNo:
+          type: string
+        expiryDate:
+          type: string
+        quantityUnits:
+          type: integer
+        quantityPacks:
+          type: number
+        daysToExpiry:
+          type: integer
+      required: [batchId, medicineId, medicineName, batchNo, expiryDate, quantityUnits, quantityPacks, daysToExpiry]
+
+    # ─── REPORTS ───────────────────────────────────────────────────────────────
+    SalesReport:
+      type: object
+      properties:
+        totalSales:
+          type: number
+        totalDiscount:
+          type: number
+        netSales:
+          type: number
+        saleCount:
+          type: integer
+        rows:
+          type: array
+          items:
+            $ref: "#/components/schemas/SalesReportRow"
+      required: [totalSales, totalDiscount, netSales, saleCount, rows]
+
+    SalesReportRow:
+      type: object
+      properties:
+        date:
+          type: string
+        invoiceNo:
+          type: string
+        customerName:
+          type: ["string", "null"]
+        totalAmount:
+          type: number
+        discountAmount:
+          type: number
+        paymentMode:
+          type: string
+      required: [date, invoiceNo, totalAmount, discountAmount, paymentMode]
+
+    StockReportItem:
+      type: object
+      properties:
+        medicineId:
+          type: integer
+        medicineName:
+          type: string
+        genericName:
+          type: ["string", "null"]
+        companyName:
+          type: ["string", "null"]
+        categoryName:
+          type: ["string", "null"]
+        rackName:
+          type: ["string", "null"]
+        totalUnits:
+          type: integer
+        totalPacks:
+          type: number
+        salePrice:
+          type: number
+        stockValue:
+          type: number
+        isControlled:
+          type: boolean
+      required: [medicineId, medicineName, totalUnits, totalPacks, salePrice, stockValue, isControlled]
+
+    PurchaseReport:
+      type: object
+      properties:
+        totalPurchases:
+          type: number
+        purchaseCount:
+          type: integer
+        rows:
+          type: array
+          items:
+            $ref: "#/components/schemas/PurchaseReportRow"
+      required: [totalPurchases, purchaseCount, rows]
+
+    PurchaseReportRow:
+      type: object
+      properties:
+        date:
+          type: string
+        invoiceNo:
+          type: ["string", "null"]
+        supplierName:
+          type: ["string", "null"]
+        totalAmount:
+          type: number
+      required: [date, totalAmount]
+
+    ControlledDrugEntry:
+      type: object
+      properties:
+        date:
+          type: string
+        medicineId:
+          type: integer
+        medicineName:
+          type: string
+        transactionType:
+          type: string
+        quantity:
+          type: number
+        invoiceNo:
+          type: ["string", "null"]
+        prescriptionNote:
+          type: ["string", "null"]
+        customerName:
+          type: ["string", "null"]
+      required: [date, medicineId, medicineName, transactionType, quantity]
+
+    ProfitLossReport:
+      type: object
+      properties:
+        revenue:
+          type: number
+        costOfGoods:
+          type: number
+        grossProfit:
+          type: number
+        grossMargin:
+          type: number
+        saleReturnsAmount:
+          type: number
+        netProfit:
+          type: number
+      required: [revenue, costOfGoods, grossProfit, grossMargin, saleReturnsAmount, netProfit]

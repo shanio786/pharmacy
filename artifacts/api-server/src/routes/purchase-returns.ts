@@ -1,0 +1,153 @@
+import { Router } from "express";
+import { eq, desc, and } from "drizzle-orm";
+import { db } from "../lib/db.js";
+import { requireAuth } from "../middlewares/auth.js";
+import {
+  purchaseReturnsTable,
+  purchaseReturnItemsTable,
+  batchesTable,
+  medicinesTable,
+  suppliersTable,
+  supplierLedgerTable,
+} from "@workspace/db";
+
+const router = Router();
+
+router.get("/purchase-returns", requireAuth, async (req, res) => {
+  const { supplierId } = req.query as { supplierId?: string };
+  const rows = await db
+    .select({
+      id: purchaseReturnsTable.id,
+      purchaseId: purchaseReturnsTable.purchaseId,
+      supplierId: purchaseReturnsTable.supplierId,
+      supplierName: suppliersTable.name,
+      date: purchaseReturnsTable.date,
+      totalAmount: purchaseReturnsTable.totalAmount,
+      reason: purchaseReturnsTable.reason,
+      notes: purchaseReturnsTable.notes,
+      createdAt: purchaseReturnsTable.createdAt,
+    })
+    .from(purchaseReturnsTable)
+    .leftJoin(suppliersTable, eq(purchaseReturnsTable.supplierId, suppliersTable.id))
+    .where(supplierId ? eq(purchaseReturnsTable.supplierId, Number(supplierId)) : undefined)
+    .orderBy(desc(purchaseReturnsTable.date));
+  res.json(rows);
+});
+
+router.post("/purchase-returns", requireAuth, async (req, res) => {
+  const { purchaseId, supplierId, date, reason, notes, items } = req.body as {
+    purchaseId?: number;
+    supplierId?: number;
+    date: string;
+    reason?: string;
+    notes?: string;
+    items: Array<{
+      medicineId: number;
+      batchId?: number;
+      batchNo?: string;
+      quantityUnits: number;
+      purchasePriceUnit: number;
+    }>;
+  };
+
+  let totalAmount = 0;
+  for (const item of items) {
+    totalAmount += item.quantityUnits * item.purchasePriceUnit;
+  }
+
+  const [ret] = await db
+    .insert(purchaseReturnsTable)
+    .values({
+      purchaseId,
+      supplierId,
+      date,
+      totalAmount: String(totalAmount),
+      reason,
+      notes,
+    })
+    .returning();
+
+  await db.insert(purchaseReturnItemsTable).values(
+    items.map((item) => ({
+      purchaseReturnId: ret.id,
+      medicineId: item.medicineId,
+      batchId: item.batchId,
+      batchNo: item.batchNo,
+      quantityUnits: item.quantityUnits,
+      purchasePriceUnit: String(item.purchasePriceUnit),
+      totalAmount: String(item.quantityUnits * item.purchasePriceUnit),
+    }))
+  );
+
+  for (const item of items) {
+    if (item.batchId) {
+      const [batch] = await db
+        .select()
+        .from(batchesTable)
+        .where(eq(batchesTable.id, item.batchId))
+        .limit(1);
+      if (batch) {
+        await db
+          .update(batchesTable)
+          .set({ quantityUnits: Math.max(0, batch.quantityUnits - item.quantityUnits) })
+          .where(eq(batchesTable.id, item.batchId));
+      }
+    }
+  }
+
+  if (supplierId) {
+    const [supplier] = await db
+      .select()
+      .from(suppliersTable)
+      .where(eq(suppliersTable.id, supplierId))
+      .limit(1);
+    if (supplier) {
+      const newBalance = Number(supplier.balance) - totalAmount;
+      await db
+        .update(suppliersTable)
+        .set({ balance: String(newBalance) })
+        .where(eq(suppliersTable.id, supplierId));
+      await db.insert(supplierLedgerTable).values({
+        supplierId,
+        type: "return",
+        referenceId: ret.id,
+        amount: String(-totalAmount),
+        balance: String(newBalance),
+        date,
+      });
+    }
+  }
+
+  res.status(201).json(ret);
+});
+
+router.get("/purchase-returns/:id", requireAuth, async (req, res) => {
+  const id = Number(req.params["id"]);
+  const [ret] = await db
+    .select()
+    .from(purchaseReturnsTable)
+    .where(eq(purchaseReturnsTable.id, id))
+    .limit(1);
+  if (!ret) {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
+  const items = await db
+    .select({
+      id: purchaseReturnItemsTable.id,
+      medicineId: purchaseReturnItemsTable.medicineId,
+      medicineName: medicinesTable.name,
+      batchId: purchaseReturnItemsTable.batchId,
+      batchNo: purchaseReturnItemsTable.batchNo,
+      quantityUnits: purchaseReturnItemsTable.quantityUnits,
+      purchasePriceUnit: purchaseReturnItemsTable.purchasePriceUnit,
+      totalAmount: purchaseReturnItemsTable.totalAmount,
+    })
+    .from(purchaseReturnItemsTable)
+    .leftJoin(medicinesTable, eq(purchaseReturnItemsTable.medicineId, medicinesTable.id))
+    .where(eq(purchaseReturnItemsTable.purchaseReturnId, id));
+
+  res.json({ ...ret, items });
+});
+
+export default router;
