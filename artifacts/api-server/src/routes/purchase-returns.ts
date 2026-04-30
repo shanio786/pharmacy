@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { eq, desc, and } from "drizzle-orm";
+import { eq, desc, and, asc, gt } from "drizzle-orm";
 import { db } from "../lib/db.js";
 import { requireAuth, requireManager } from "../middlewares/auth.js";
 import {
@@ -114,6 +114,27 @@ router.post("/purchase-returns", requireAuth, requireManager, async (req, res) =
           .update(batchesTable)
           .set({ quantityUnits: batch.quantityUnits - item.quantityUnits })
           .where(eq(batchesTable.id, item.batchId));
+      } else {
+        let remaining = item.quantityUnits;
+        const batches = await tx
+          .select()
+          .from(batchesTable)
+          .where(and(eq(batchesTable.medicineId, item.medicineId), gt(batchesTable.quantityUnits, 0)))
+          .orderBy(asc(batchesTable.expiryDate));
+        for (const batch of batches) {
+          if (remaining <= 0) break;
+          const deduct = Math.min(remaining, batch.quantityUnits);
+          await tx
+            .update(batchesTable)
+            .set({ quantityUnits: batch.quantityUnits - deduct })
+            .where(eq(batchesTable.id, batch.id));
+          remaining -= deduct;
+        }
+        if (remaining > 0) {
+          throw Object.assign(new Error(
+            `Insufficient stock to return ${item.quantityUnits} units for medicineId=${item.medicineId}`
+          ), { status: 400 });
+        }
       }
     }
 

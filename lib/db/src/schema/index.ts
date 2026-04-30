@@ -34,6 +34,7 @@ export const deliveryStatusEnum = pgEnum("delivery_status", [
   "dispatched",
   "delivered",
   "cancelled",
+  "returned",
 ]);
 export const ledgerTypeEnum = pgEnum("ledger_type", [
   "purchase",

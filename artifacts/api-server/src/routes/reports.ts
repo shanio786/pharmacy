@@ -19,7 +19,6 @@ import {
 
 const router = Router();
 
-// Helper: accept dateFrom/dateTo (generated client) or from/to (legacy)
 function dateRange(q: Record<string, string | undefined>) {
   return {
     startDate: q["dateFrom"] ?? q["from"],
@@ -27,7 +26,7 @@ function dateRange(q: Record<string, string | undefined>) {
   };
 }
 
-// GET /reports/sales → SalesReport (matches generated SalesReport type)
+
 router.get("/reports/sales", requireAuth, async (req, res) => {
   const { startDate, endDate } = dateRange(req.query as Record<string, string | undefined>);
   const conditions = [];
@@ -68,7 +67,7 @@ router.get("/reports/sales", requireAuth, async (req, res) => {
   });
 });
 
-// GET /reports/stock → StockReportItem[] (array — matches generated return type)
+
 router.get("/reports/stock", requireAuth, async (req, res) => {
   const { categoryId, companyId } = req.query as { categoryId?: string; companyId?: string };
   const today = new Date().toISOString().slice(0, 10);
@@ -121,7 +120,7 @@ router.get("/reports/stock", requireAuth, async (req, res) => {
   })));
 });
 
-// GET /reports/purchase (singular — matches generated client URL) → PurchaseReport
+
 router.get("/reports/purchase", requireAuth, async (req, res) => {
   const { startDate, endDate } = dateRange(req.query as Record<string, string | undefined>);
   const { supplierId } = req.query as { supplierId?: string };
@@ -163,7 +162,7 @@ router.get("/reports/purchases", requireAuth, (req, res) => {
   res.redirect(307, `/api/reports/purchase${qs ? `?${qs}` : ""}`);
 });
 
-// GET /reports/expiry → ExpiringBatch[] (matches generated return type)
+
 router.get("/reports/expiry", requireAuth, async (req, res) => {
   const { daysAhead = "90" } = req.query as { daysAhead?: string };
   const numDays = Math.min(365, Number(daysAhead));
@@ -209,7 +208,7 @@ router.get("/reports/expiry", requireAuth, async (req, res) => {
   }));
 });
 
-// GET /reports/controlled-drugs → ControlledDrugEntry[] (array — matches generated type)
+
 router.get("/reports/controlled-drugs", requireAuth, async (req, res) => {
   const { startDate, endDate } = dateRange(req.query as Record<string, string | undefined>);
   const conditions = [eq(medicinesTable.isControlled, true)];
@@ -248,17 +247,12 @@ router.get("/reports/controlled-drugs", requireAuth, async (req, res) => {
   })));
 });
 
-// GET /reports/profit-loss → ProfitLossReport (matches generated type exactly)
 router.get("/reports/profit-loss", requireAuth, async (req, res) => {
   const { startDate, endDate } = dateRange(req.query as Record<string, string | undefined>);
 
   const saleConditions = [];
   if (startDate) saleConditions.push(gte(salesTable.date, startDate));
   if (endDate) saleConditions.push(lte(salesTable.date, endDate));
-
-  const purchaseConditions = [];
-  if (startDate) purchaseConditions.push(gte(purchasesTable.date, startDate));
-  if (endDate) purchaseConditions.push(lte(purchasesTable.date, endDate));
 
   const returnConditions = [];
   if (startDate) returnConditions.push(gte(saleReturnsTable.date, startDate));
@@ -269,10 +263,14 @@ router.get("/reports/profit-loss", requireAuth, async (req, res) => {
     .from(salesTable)
     .where(saleConditions.length ? and(...saleConditions) : undefined);
 
-  const [costRow] = await db
-    .select({ cost: sql<number>`COALESCE(SUM(${purchasesTable.totalAmount}), 0)` })
-    .from(purchasesTable)
-    .where(purchaseConditions.length ? and(...purchaseConditions) : undefined);
+  const [cogsRow] = await db
+    .select({
+      cogs: sql<number>`COALESCE(SUM(${saleItemsTable.quantityUnits} * ${batchesTable.purchasePrice}::numeric), 0)`,
+    })
+    .from(saleItemsTable)
+    .innerJoin(salesTable, eq(saleItemsTable.saleId, salesTable.id))
+    .leftJoin(batchesTable, eq(saleItemsTable.batchId, batchesTable.id))
+    .where(saleConditions.length ? and(...saleConditions) : undefined);
 
   const [returnsRow] = await db
     .select({ total: sql<number>`COALESCE(SUM(${saleReturnsTable.totalAmount}), 0)` })
@@ -280,7 +278,7 @@ router.get("/reports/profit-loss", requireAuth, async (req, res) => {
     .where(returnConditions.length ? and(...returnConditions) : undefined);
 
   const revenue = Number(revenueRow?.revenue ?? 0);
-  const costOfGoods = Number(costRow?.cost ?? 0);
+  const costOfGoods = Number(cogsRow?.cogs ?? 0);
   const saleReturnsAmount = Number(returnsRow?.total ?? 0);
   const grossProfit = revenue - costOfGoods;
   const netProfit = grossProfit - saleReturnsAmount;

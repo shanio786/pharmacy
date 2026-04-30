@@ -30,7 +30,6 @@ const medicineSelect = {
   rackName: racksTable.name,
   strength: medicinesTable.strength,
   packingLabel: medicinesTable.packingLabel,
-  // Alias DB columns to match generated client contract
   conversionFactor: medicinesTable.unitsPerPack,
   purchasePrice: medicinesTable.purchasePriceUnit,
   salePrice: medicinesTable.salePriceUnit,
@@ -235,7 +234,6 @@ router.get("/medicines/:id/alternatives", requireAuth, async (req, res) => {
   res.json(alts.filter((a) => a.id !== id));
 });
 
-// POST /medicines/adjust-stock — matches generated API contract (medicineId in body)
 router.post("/medicines/adjust-stock", requireAuth, requireManager, async (req, res) => {
   const { medicineId, batchId, adjustmentUnits, reason } = req.body as {
     medicineId: number;
@@ -287,7 +285,6 @@ router.post("/medicines/adjust-stock", requireAuth, requireManager, async (req, 
   }
 });
 
-// Keep the legacy /:id/adjust-stock route for backwards compatibility
 router.post("/medicines/:id/adjust-stock", requireAuth, requireManager, async (req, res) => {
   const id = Number(req.params["id"]);
   const { batchId, adjustment, adjustmentUnits, reason } = req.body as {

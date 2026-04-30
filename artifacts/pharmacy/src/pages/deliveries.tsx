@@ -18,6 +18,7 @@ const STATUS_BADGE: Record<string, any> = {
   dispatched: "default",
   delivered: "default",
   cancelled: "destructive",
+  returned: "outline",
 };
 
 const STATUS_COLOR: Record<string, string> = {
@@ -25,6 +26,7 @@ const STATUS_COLOR: Record<string, string> = {
   dispatched: "text-blue-600",
   delivered: "text-green-600",
   cancelled: "text-red-600",
+  returned: "text-orange-600",
 };
 
 export default function DeliveriesPage() {
@@ -249,6 +251,7 @@ export default function DeliveriesPage() {
                   <SelectItem value="pending">Pending</SelectItem>
                   <SelectItem value="dispatched">Dispatched</SelectItem>
                   <SelectItem value="delivered">Delivered</SelectItem>
+                  <SelectItem value="returned">Returned</SelectItem>
                   <SelectItem value="cancelled">Cancelled</SelectItem>
                 </SelectContent>
               </Select>
