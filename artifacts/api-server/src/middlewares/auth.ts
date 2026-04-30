@@ -22,7 +22,11 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
   try {
     const payload = verifyToken(token);
     const [user] = await db
-      .select({ isActive: usersTable.isActive })
+      .select({
+        isActive: usersTable.isActive,
+        role: usersTable.role,
+        username: usersTable.username,
+      })
       .from(usersTable)
       .where(eq(usersTable.id, payload.userId))
       .limit(1);
@@ -30,7 +34,9 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
       res.status(401).json({ error: "Account disabled" });
       return;
     }
-    req.user = payload;
+    // Re-hydrate role/username from DB so downgrades take effect immediately
+    // instead of waiting for the JWT to expire.
+    req.user = { ...payload, role: user.role, username: user.username };
     next();
   } catch {
     res.status(401).json({ error: "Invalid or expired token" });

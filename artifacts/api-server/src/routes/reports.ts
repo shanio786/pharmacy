@@ -53,9 +53,11 @@ router.get("/reports/sales", requireAuth, async (req, res) => {
     .where(conditions.length ? and(...conditions) : undefined)
     .orderBy(desc(salesTable.date));
 
-  const totalSales = rows.reduce((s, r) => s + Number(r.totalAmount), 0);
+  // sales.totalAmount is already post-discount (subtotal - discount). So the
+  // sum of totalAmount IS the net sales. Gross sales = net + total discount.
+  const netSales = rows.reduce((s, r) => s + Number(r.totalAmount), 0);
   const totalDiscount = rows.reduce((s, r) => s + Number(r.discountAmount), 0);
-  const netSales = totalSales - totalDiscount;
+  const totalSales = netSales + totalDiscount; // gross / pre-discount
 
   res.json({
     totalSales,
