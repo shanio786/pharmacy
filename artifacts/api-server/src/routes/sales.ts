@@ -22,14 +22,21 @@ function generateInvoiceNo(): string {
 }
 
 router.get("/sales", requireAuth, async (req, res) => {
-  const { from, to, customerId } = req.query as {
+  // Accept both dateFrom/dateTo (generated contract) and from/to (legacy)
+  const { from, to, dateFrom, dateTo, customerId } = req.query as {
     from?: string;
     to?: string;
+    dateFrom?: string;
+    dateTo?: string;
     customerId?: string;
   };
+
+  const startDate = dateFrom ?? from;
+  const endDate = dateTo ?? to;
+
   const conditions = [];
-  if (from) conditions.push(gte(salesTable.date, from));
-  if (to) conditions.push(lte(salesTable.date, to));
+  if (startDate) conditions.push(gte(salesTable.date, startDate));
+  if (endDate) conditions.push(lte(salesTable.date, endDate));
   if (customerId) conditions.push(eq(salesTable.customerId, Number(customerId)));
 
   const rows = await db
@@ -78,11 +85,12 @@ router.post("/sales", requireAuth, async (req, res) => {
     patientName?: string;
     items: Array<{
       medicineId: number;
-      batchId?: number;
+      batchId?: number | null;
       saleUnit?: string;
       quantity: number;
       salePrice: number;
       discountPercent?: number;
+      prescriptionNote?: string | null;
     }>;
   };
 
@@ -101,17 +109,19 @@ router.post("/sales", requireAuth, async (req, res) => {
     medicineId: number;
     batchId: number;
     batchNo: string;
-    quantity: number;
-    salePrice: number;
+    quantityUnits: number;   // units deducted from stock
+    requestedQty: number;    // quantity in the requested unit (packs or units)
+    salePrice: number;       // price per requested unit (pack price or unit price)
     discountPercent: number;
     saleUnit: string;
     unitsPerPack: number;
+    lineTotal: number;       // total for this allocation = requestedQty × salePrice × discount
   };
 
   const allocations: BatchAllocation[] = [];
 
   for (const item of items) {
-    // Fetch medicine to check controlled/prescription flag
+    // Fetch medicine to check controlled/prescription flag and unitsPerPack
     const [med] = await db
       .select({
         id: medicinesTable.id,
@@ -129,50 +139,65 @@ router.post("/sales", requireAuth, async (req, res) => {
       return;
     }
 
-    if (med.requiresPrescription && (!prescribedBy?.trim() || !patientName?.trim())) {
-      res.status(400).json({
-        error: `Medicine "${med.name}" requires a prescription. Provide prescribedBy and patientName.`,
-      });
-      return;
+    // Controlled drug enforcement: check prescriptionNote per item OR sale-level prescribedBy
+    if (med.requiresPrescription) {
+      const hasPrescription =
+        item.prescriptionNote?.trim() ||
+        prescribedBy?.trim();
+      if (!hasPrescription) {
+        res.status(400).json({
+          error: `"${med.name}" requires a prescription. Provide prescriptionNote for this item or prescribedBy at the sale level.`,
+        });
+        return;
+      }
     }
 
-    // Convert pack quantity to units for stock tracking
-    const quantityInUnits = item.saleUnit === "pack"
-      ? item.quantity * med.unitsPerPack
-      : item.quantity;
+    // Convert requested quantity to units for stock deduction
+    const saleUnit = item.saleUnit ?? "unit";
+    const unitsPerItem = saleUnit === "pack" ? med.unitsPerPack : 1;
+    const quantityInUnits = item.quantity * unitsPerItem;
+
+    // Allocation: price is per the requested unit (pack or single) — keep as-is for total
+    // Total = quantity × salePrice (NOT quantityInUnits × salePrice)
+    const grossPerItem = item.quantity * item.salePrice;
+    const discPct = item.discountPercent ?? 0;
+    const lineTotal = grossPerItem - (discPct / 100) * grossPerItem;
 
     let remaining = quantityInUnits;
 
     if (item.batchId) {
-      // Caller specified a batch — validate it belongs to this medicine
-      const [batch] = await db
+      // Specific batch requested — validate stock, then fall through to FEFO for remainder
+      const [specBatch] = await db
         .select({ id: batchesTable.id, batchNo: batchesTable.batchNo, quantityUnits: batchesTable.quantityUnits })
         .from(batchesTable)
         .where(and(eq(batchesTable.id, item.batchId), eq(batchesTable.medicineId, item.medicineId)))
         .limit(1);
 
-      if (!batch) {
-        res.status(400).json({ error: `Batch ID ${item.batchId} not found for medicine "${med.name}"` });
+      if (!specBatch) {
+        res.status(400).json({ error: `Batch ID ${item.batchId} not found for "${med.name}"` });
         return;
       }
-      if (batch.quantityUnits < remaining) {
-        res.status(400).json({
-          error: `Insufficient stock in batch ${batch.batchNo}: available ${batch.quantityUnits}, requested ${remaining}`,
+
+      const take = Math.min(specBatch.quantityUnits, remaining);
+      if (take > 0) {
+        allocations.push({
+          medicineId: item.medicineId,
+          batchId: specBatch.id,
+          batchNo: specBatch.batchNo,
+          quantityUnits: take,
+          requestedQty: take / unitsPerItem,
+          salePrice: item.salePrice,
+          discountPercent: discPct,
+          saleUnit,
+          unitsPerPack: med.unitsPerPack,
+          lineTotal: (take / quantityInUnits) * lineTotal,
         });
-        return;
+        remaining -= take;
       }
-      allocations.push({
-        medicineId: item.medicineId,
-        batchId: batch.id,
-        batchNo: batch.batchNo,
-        quantity: remaining,
-        salePrice: item.salePrice,
-        discountPercent: item.discountPercent ?? 0,
-        saleUnit: item.saleUnit ?? "unit",
-        unitsPerPack: med.unitsPerPack,
-      });
-    } else {
-      // FEFO: allocate across earliest-expiry non-expired batches until fulfilled
+    }
+
+    if (remaining > 0) {
+      // FEFO: allocate from earliest non-expired batches
       const batches = await db
         .select({ id: batchesTable.id, batchNo: batchesTable.batchNo, quantityUnits: batchesTable.quantityUnits })
         .from(batchesTable)
@@ -180,46 +205,47 @@ router.post("/sales", requireAuth, async (req, res) => {
           eq(batchesTable.medicineId, item.medicineId),
           gte(batchesTable.expiryDate, today),
           gt(batchesTable.quantityUnits, 0),
+          // Exclude the already-chosen batchId to avoid double-counting
+          ...(item.batchId ? [eq(batchesTable.id, item.batchId)] : []),
         ))
         .orderBy(asc(batchesTable.expiryDate));
 
-      for (const batch of batches) {
+      // If batchId was given, skip that batch (already handled above)
+      const fefo = item.batchId
+        ? batches.filter((b) => b.id !== item.batchId)
+        : batches;
+
+      for (const batch of fefo) {
         if (remaining <= 0) break;
         const take = Math.min(batch.quantityUnits, remaining);
         allocations.push({
           medicineId: item.medicineId,
           batchId: batch.id,
           batchNo: batch.batchNo,
-          quantity: take,
+          quantityUnits: take,
+          requestedQty: take / unitsPerItem,
           salePrice: item.salePrice,
-          discountPercent: item.discountPercent ?? 0,
-          saleUnit: item.saleUnit ?? "unit",
+          discountPercent: discPct,
+          saleUnit,
           unitsPerPack: med.unitsPerPack,
+          lineTotal: (take / quantityInUnits) * lineTotal,
         });
         remaining -= take;
       }
+    }
 
-      if (remaining > 0) {
-        res.status(400).json({
-          error: `Insufficient stock for "${med.name}": requested ${item.quantity}, available ${item.quantity - remaining}`,
-        });
-        return;
-      }
+    if (remaining > 0) {
+      res.status(400).json({
+        error: `Insufficient stock for "${med.name}": requested ${item.quantity} ${saleUnit}(s), short by ${Math.ceil(remaining / unitsPerItem)}`,
+      });
+      return;
     }
   }
 
   // ------------------------------------------------------------------
-  // Compute totals
+  // Compute sale totals (sum of per-allocation lineTotals)
   // ------------------------------------------------------------------
-  let subtotal = 0;
-  const allocationsWithTotal = allocations.map((a) => {
-    const gross = a.quantity * a.salePrice;
-    const discount = (a.discountPercent / 100) * gross;
-    const total = gross - discount;
-    subtotal += total;
-    return { ...a, total };
-  });
-
+  const subtotal = allocations.reduce((sum, a) => sum + a.lineTotal, 0);
   const disc = discountAmount ?? 0;
   const totalAmount = subtotal - disc;
   const paid = paidAmount ?? totalAmount;
@@ -250,31 +276,31 @@ router.post("/sales", requireAuth, async (req, res) => {
       .returning();
 
     await tx.insert(saleItemsTable).values(
-      allocationsWithTotal.map((a) => ({
+      allocations.map((a) => ({
         saleId: sale.id,
         medicineId: a.medicineId,
         batchId: a.batchId,
         batchNo: a.batchNo,
-        quantityUnits: a.quantity,
+        quantityUnits: a.quantityUnits,
         salePriceUnit: String(a.salePrice),
         discountPct: String(a.discountPercent),
-        totalAmount: String(a.total),
+        totalAmount: String(a.lineTotal),
       }))
     );
 
-    // Deduct stock per batch inside the transaction (re-read for safety)
-    for (const a of allocationsWithTotal) {
+    // Deduct stock per batch allocation inside the transaction
+    for (const a of allocations) {
       const [current] = await tx
         .select({ quantityUnits: batchesTable.quantityUnits })
         .from(batchesTable)
         .where(eq(batchesTable.id, a.batchId))
         .limit(1);
-      if (!current || current.quantityUnits < a.quantity) {
+      if (!current || current.quantityUnits < a.quantityUnits) {
         throw new Error(`Concurrent stock conflict on batch ${a.batchNo}`);
       }
       await tx
         .update(batchesTable)
-        .set({ quantityUnits: current.quantityUnits - a.quantity })
+        .set({ quantityUnits: current.quantityUnits - a.quantityUnits })
         .where(eq(batchesTable.id, a.batchId));
     }
 
@@ -306,7 +332,7 @@ router.post("/sales", requireAuth, async (req, res) => {
     return sale;
   });
 
-  res.status(201).json({ ...result, items: allocationsWithTotal });
+  res.status(201).json({ ...result, items: allocations });
 });
 
 router.get("/sales/:id", requireAuth, async (req, res) => {
