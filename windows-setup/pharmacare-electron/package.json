@@ -1,0 +1,41 @@
+{
+  "name": "pharmacare-desktop",
+  "version": "1.0.0",
+  "description": "PharmaCare Pharmacy Management System - Desktop App",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win --x64"
+  },
+  "build": {
+    "appId": "com.pharmacare.desktop",
+    "productName": "PharmaCare",
+    "directories": {
+      "output": "dist-installer"
+    },
+    "win": {
+      "target": "nsis",
+      "icon": "icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "PharmaCare"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "icon.ico",
+      "../../artifacts/api-server/dist/**",
+      "../../artifacts/pharmacy/dist/**",
+      "../../node_modules/**",
+      "../../lib/**"
+    ]
+  },
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.0.0"
+  }
+}
