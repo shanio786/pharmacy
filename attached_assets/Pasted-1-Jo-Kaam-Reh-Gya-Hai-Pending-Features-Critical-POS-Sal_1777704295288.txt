@@ -1,0 +1,53 @@
+1) Jo Kaam Reh Gya Hai (Pending Features)
+Critical:
+
+POS Sale bug — salePrice must be non-negative validation error (sale save nahin hoti)
+Past Receipt Reprint — Sales History se purani receipt dobara print
+FBR POS Real-Time Push — FBR Sandbox API se live invoice number lena
+Bonus (jo asal brief mein the):
+4. Thermal printer auto-detect (EPSON TM-T20II auto-select)
+
+Day-end auto Z-Report (raat 11:55 PM auto email/save)
+USB barcode auto-focus (POS load hote hi cursor barcode field par)
+Polish (chhoti cheezein):
+7. Login footer ka position fix (right side dikh raha tha)
+
+Optional numeric fields jab API se null aaye to crash na ho
+2) Naye Replit Mein Project Import Karne Ka Tareeqa (A to Z)
+Jab aap dobara kaam karna chahein kisi naye Replit pe:
+
+Step 1 — Project import karein:
+
+Naya Replit project banayein → "Import from GitHub" choose karein
+URL daalein: https://github.com/shanio786/pharmacy.git
+Import ho jayega
+Step 2 — Agent ko yeh detail dein (copy-paste karne ke liye):
+
+Yeh Zee Pharma Care POS software hai (pharmacy management).
+Stack: pnpm monorepo, React + Vite frontend, Node/Express backend,
+PostgreSQL (Drizzle ORM), OpenAPI codegen, Electron desktop wrapper.
+Authentication: admin password based.
+Branding: "Zee Pharma Care" + footer "Powered by Devoria Tech | 03117597815".
+Pichle session mein non-medicine product types add hue
+(cosmetic, baby_care, FMCG etc), searchable Combobox lagaye gaye,
+Stock→Inventory aur Medicines→Products rename hua.
+Pending kaam:
+1. POS sale "salePrice must be non-negative" bug fix
+2. Sales history se receipt reprint
+3. FBR Sandbox API real-time push
+4. Thermal printer auto-detect
+5. Day-end auto Z-Report
+6. USB barcode auto-focus on POS load
+Pehle pnpm install karo, DB migrate karo, workflow start karo,
+phir confirm karo sab chal raha hai. Uske baad pending list par kaam shuru karo.
+
+Step 3 — Setup commands jo Agent chalayega:
+
+pnpm install
+DB sync (Drizzle push)
+Admin password set (env variable se)
+Workflow start
+Step 4 — Update karne ke baad:
+
+Agent ko bolein "commit and push to GitHub"
+Wo automatically push kar dega
