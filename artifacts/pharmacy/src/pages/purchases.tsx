@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useListPurchases, useCreatePurchase, useListSuppliers, useListMedicines } from "@workspace/api-client-react";
+import { useListPurchases, useCreatePurchase, useListSuppliers, useListMedicines, useCreateSupplier } from "@workspace/api-client-react";
 import type { CreatePurchaseBody, CreatePurchaseItemBody, Supplier, Purchase, MedicineWithStock } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SearchableCombobox } from "@/components/ui/searchable-combobox";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Trash2, Search, Loader2 } from "lucide-react";
 import { format } from "date-fns";
@@ -41,6 +42,10 @@ export default function PurchasesPage() {
   const [medSearch, setMedSearch] = useState("");
   const [addingMed, setAddingMed] = useState(false);
 
+  const [showAddSupplier, setShowAddSupplier] = useState(false);
+  const [newSupplierName, setNewSupplierName] = useState("");
+  const [newSupplierContact, setNewSupplierContact] = useState("");
+
   const params = {
     supplierId: suppFilter !== "all" ? Number(suppFilter) : undefined,
     dateFrom: dateFrom || undefined,
@@ -51,6 +56,12 @@ export default function PurchasesPage() {
   const { data: suppliers = [] } = useListSuppliers();
   const { data: medResults = [] } = useListMedicines(medSearch.length >= 2 ? { search: medSearch } : undefined);
   const createPurchase = useCreatePurchase();
+  const createSupplier = useCreateSupplier();
+
+  const supplierOptions = (suppliers as Supplier[]).map((s) => ({
+    value: String(s.id),
+    label: s.name + (s.contact ? ` — ${s.contact}` : ""),
+  }));
 
   const addItem = (med: MedicineWithStock) => {
     setItems((prev) => [
@@ -79,7 +90,7 @@ export default function PurchasesPage() {
 
   const removeItem = (idx: number) => setItems((prev) => prev.filter((_, i) => i !== idx));
 
-  const total = items.reduce((acc, it) => acc + it.packsReceived * it.purchasePrice, 0);
+  const total = items.reduce((acc, it) => acc + Number(it.packsReceived ?? 0) * Number(it.purchasePrice ?? 0), 0);
 
   const handleCreate = async () => {
     if (items.length === 0) {
@@ -118,6 +129,21 @@ export default function PurchasesPage() {
     }
   };
 
+  const handleAddSupplier = async () => {
+    if (!newSupplierName.trim()) return;
+    try {
+      const created = await createSupplier.mutateAsync({ data: { name: newSupplierName.trim(), contact: newSupplierContact || undefined } });
+      await qc.invalidateQueries();
+      setSupplierId(String((created as Supplier).id));
+      setShowAddSupplier(false);
+      setNewSupplierName("");
+      setNewSupplierContact("");
+      toast({ title: `Supplier "${newSupplierName.trim()}" added` });
+    } catch {
+      toast({ title: "Error adding supplier", variant: "destructive" });
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-3">
@@ -132,13 +158,14 @@ export default function PurchasesPage() {
 
       {/* Filters */}
       <div className="flex gap-3 flex-wrap">
-        <Select value={suppFilter} onValueChange={setSuppFilter}>
-          <SelectTrigger className="w-44"><SelectValue placeholder="All Suppliers" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Suppliers</SelectItem>
-            {(suppliers as Supplier[]).map((s) => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}
-          </SelectContent>
-        </Select>
+        <div className="w-56">
+          <SearchableCombobox
+            options={(suppliers as Supplier[]).map((s) => ({ value: String(s.id), label: s.name }))}
+            value={suppFilter}
+            onValueChange={(v) => setSuppFilter(v === "none" ? "all" : v)}
+            placeholder="All Suppliers"
+          />
+        </div>
         <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="w-36" placeholder="From" />
         <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="w-36" placeholder="To" />
       </div>
@@ -194,13 +221,14 @@ export default function PurchasesPage() {
           <div className="grid grid-cols-3 gap-4 py-2">
             <div className="space-y-1">
               <Label>Supplier</Label>
-              <Select value={supplierId} onValueChange={setSupplierId}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">— None —</SelectItem>
-                  {(suppliers as Supplier[]).map((s) => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <SearchableCombobox
+                options={supplierOptions}
+                value={supplierId}
+                onValueChange={setSupplierId}
+                placeholder="Select supplier..."
+                onAddNew={() => { setNewSupplierName(""); setNewSupplierContact(""); setShowAddSupplier(true); }}
+                addNewLabel="Add New Supplier"
+              />
             </div>
             <div className="space-y-1">
               <Label>Invoice#</Label>
@@ -231,7 +259,7 @@ export default function PurchasesPage() {
                 <Input
                   value={medSearch}
                   onChange={(e) => setMedSearch(e.target.value)}
-                  placeholder="Search medicine..."
+                  placeholder="Search medicine (type 2+ chars)..."
                   className="pl-9"
                   autoFocus
                   data-testid="input-grn-med-search"
@@ -349,6 +377,40 @@ export default function PurchasesPage() {
             <Button onClick={handleCreate} disabled={createPurchase.isPending} data-testid="button-save-grn">
               {createPurchase.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
               Save GRN
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Quick Add Supplier Dialog */}
+      <Dialog open={showAddSupplier} onOpenChange={setShowAddSupplier}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle>Add New Supplier</DialogTitle></DialogHeader>
+          <div className="space-y-3 py-2">
+            <div className="space-y-1">
+              <Label>Supplier Name *</Label>
+              <Input
+                value={newSupplierName}
+                onChange={(e) => setNewSupplierName(e.target.value)}
+                placeholder="e.g. Ali Brothers Pharma"
+                autoFocus
+                onKeyDown={(e) => e.key === "Enter" && handleAddSupplier()}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label>Contact (optional)</Label>
+              <Input
+                value={newSupplierContact}
+                onChange={(e) => setNewSupplierContact(e.target.value)}
+                placeholder="e.g. 0300-1234567"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowAddSupplier(false)}>Cancel</Button>
+            <Button onClick={handleAddSupplier} disabled={!newSupplierName.trim() || createSupplier.isPending}>
+              {createSupplier.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Add Supplier
             </Button>
           </DialogFooter>
         </DialogContent>

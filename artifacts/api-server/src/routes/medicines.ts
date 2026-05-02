@@ -121,6 +121,8 @@ router.get("/medicines", requireAuth, async (req, res) => {
   if (genericNameId) conditions.push(eq(medicinesTable.genericNameId, Number(genericNameId)));
   if (isControlled === "true") conditions.push(eq(medicinesTable.isControlled, true));
 
+  const limit = search ? 200 : 100;
+
   const rows = await db
     .select(withStock(medicineSelect))
     .from(medicinesTable)
@@ -130,7 +132,8 @@ router.get("/medicines", requireAuth, async (req, res) => {
     .leftJoin(unitsTable, eq(medicinesTable.unitId, unitsTable.id))
     .leftJoin(racksTable, eq(medicinesTable.rackId, racksTable.id))
     .where(and(...conditions))
-    .orderBy(medicinesTable.name);
+    .orderBy(medicinesTable.name)
+    .limit(limit);
 
   res.json(rows);
 });
