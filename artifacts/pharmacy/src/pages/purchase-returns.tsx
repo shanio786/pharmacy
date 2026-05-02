@@ -262,7 +262,7 @@ export default function PurchaseReturnsPage() {
                         <td className="px-3 py-2 text-center">
                           <Input type="number" min={1} value={it.returnQuantity} onChange={(e) => updateQty(idx, Number(e.target.value))} className="h-6 text-xs w-16 text-center" />
                         </td>
-                        <td className="px-3 py-2 text-right font-medium">PKR {(it.purchasePriceUnit * getItemUnits(it)).toFixed(2)}</td>
+                        <td className="px-3 py-2 text-right font-medium">PKR {(Number(it.purchasePriceUnit ?? 0) * getItemUnits(it)).toFixed(2)}</td>
                         <td className="px-3 py-2">
                           <button onClick={() => removeItem(idx)} className="text-destructive hover:opacity-70"><Trash2 className="w-3 h-3" /></button>
                         </td>

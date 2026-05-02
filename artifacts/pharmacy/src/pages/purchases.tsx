@@ -323,7 +323,7 @@ export default function PurchasesPage() {
                         />
                       </td>
                       <td className="px-2 py-2 text-right font-medium">
-                        PKR {(it.packsReceived * Number(it.purchasePrice ?? 0)).toFixed(2)}
+                        PKR {(Number(it.packsReceived ?? 0) * Number(it.purchasePrice ?? 0)).toFixed(2)}
                       </td>
                       <td className="px-2 py-2">
                         <button onClick={() => removeItem(idx)} className="text-destructive hover:opacity-70">

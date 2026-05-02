@@ -410,7 +410,7 @@ export default function MedicinesPage() {
                     <td className="py-2">{b.batchNo}</td>
                     <td className="py-2">{b.expiryDate}</td>
                     <td className="py-2 text-right">{b.quantityUnits}</td>
-                    <td className="py-2 text-right">PKR {b.salePrice?.toFixed(2)}</td>
+                    <td className="py-2 text-right">PKR {Number(b.salePrice ?? 0).toFixed(2)}</td>
                   </tr>
                 ))}
                 {( batches as Batch[]).length === 0 && (
