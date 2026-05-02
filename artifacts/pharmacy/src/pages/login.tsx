@@ -35,7 +35,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-muted/30 p-4">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-muted/30 p-4 gap-6">
       <Card className="w-full max-w-md shadow-xl">
         <CardHeader className="text-center space-y-3">
           <div className="mx-auto w-16 h-16 bg-primary rounded-2xl flex items-center justify-center">
@@ -103,6 +103,9 @@ export default function LoginPage() {
           </p>
         </CardContent>
       </Card>
+      <p className="text-center text-xs text-muted-foreground">
+        © {new Date().getFullYear()} PharmaCare — Pharmacy Management System
+      </p>
     </div>
   );
 }

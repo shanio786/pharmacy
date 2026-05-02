@@ -105,3 +105,25 @@ Hotkeys are suppressed inside text inputs except F4/F8.
 ## Desktop App (`desktop/`)
 
 Electron wrapper that bundles the Express API + built SPA into a Windows `.exe` installer (`PharmaCare-Setup-<v>.exe`). Auto-built per push by `.github/workflows/build-desktop.yml`. Local install requires PostgreSQL on the same PC; LAN clients point their shortcut to the server PC's IP. See `desktop/README.md`.
+
+## Workflows
+
+- `API Server` — `PORT=8080 cd artifacts/api-server && PORT=8080 pnpm run dev` (port 8080)
+- `Pharmacy Frontend` — `PORT=8081 cd artifacts/pharmacy && PORT=8081 pnpm run dev` (port 8081)
+
+## Recent Changes (May 2026)
+
+### Bug Fixes
+- **POS salePrice NaN fix**: All numeric values (`salePrice`, `quantity`, `discountPercent`, `paidAmount`, `discountAmount`) are wrapped in `Number()` with safe fallbacks before being sent to the API. Prevents "salePrice must be non-negative number" error caused by string coercion from Drizzle numeric columns.
+- **Optional numeric fields crash fix**: Cart quantity inputs clamp to `Math.max(1, ...)` and discount inputs clamp to `[0,100]` range.
+
+### New Features
+- **USB Barcode Auto-focus**: POS page auto-focuses the medicine search input on mount via `useRef` + `useEffect`.
+- **Past Receipt Reprint**: Sales Report page now has a "Reprint" button on each row that fetches full sale details and shows a thermal receipt modal (with "DUPLICATE COPY" watermark).
+- **FBR Real-Time Push**: After each sale, if `fbrEnabled=true` and `fbrToken` is set in settings, the sale is pushed to the FBR FIRES sandbox endpoint (`https://esp.fbr.gov.pk:8446/api/test/GetInvoiceNumber`). Errors are non-fatal (logged, sale proceeds). FBR API token field added to Settings → FBR section.
+- **Day-End Auto Z-Report**: Server runs a `setInterval` every 60s; at 23:55 it generates a JSON Z-report summary (invoice count, total sales, discount, paid amount, breakdown by payment mode) and logs it as `[Z-REPORT]`.
+- **Login Footer Center Fix**: Login page footer is now properly centered below the card using `flex-col` layout.
+
+### DB Schema Changes
+- `sales.fbr_invoice_no` — stores FBR-assigned invoice number after successful push
+- `settings.fbr_token` — Bearer token for FBR FIRES API authentication

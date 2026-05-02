@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useGetSettings, useUpdateSettings } from "@workspace/api-client-react";
 import type { UpdateSettingsBody, Settings as SettingsData } from "@workspace/api-client-react";
+
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,6 +28,7 @@ export default function GeneralSettingsPage() {
     drugLicense: null,
     fbrEnabled: false,
     fbrPosId: null,
+    fbrToken: null,
     taxPercent: 0,
     receiptFooter: null,
     defaultSaleUnit: "unit",
@@ -49,6 +51,7 @@ export default function GeneralSettingsPage() {
         drugLicense: s.drugLicense ?? null,
         fbrEnabled: s.fbrEnabled ?? false,
         fbrPosId: s.fbrPosId ?? null,
+        fbrToken: s.fbrToken ?? null,
         taxPercent: s.taxPercent ?? 0,
         receiptFooter: s.receiptFooter ?? null,
         defaultSaleUnit: s.defaultSaleUnit ?? "unit",
@@ -146,15 +149,27 @@ export default function GeneralSettingsPage() {
             />
           </div>
           {form.fbrEnabled && (
-            <div className="space-y-1">
-              <Label>FBR POS Registration ID</Label>
-              <Input
-                value={form.fbrPosId ?? ""}
-                onChange={f("fbrPosId")}
-                placeholder="e.g. POS-FBR-1234567"
-                data-testid="input-fbr-pos-id"
-              />
-              <p className="text-xs text-muted-foreground">Provided by FBR after POS registration. Printed on each receipt.</p>
+            <div className="space-y-3">
+              <div className="space-y-1">
+                <Label>FBR POS Registration ID</Label>
+                <Input
+                  value={form.fbrPosId ?? ""}
+                  onChange={f("fbrPosId")}
+                  placeholder="e.g. POS-FBR-1234567"
+                  data-testid="input-fbr-pos-id"
+                />
+                <p className="text-xs text-muted-foreground">Provided by FBR after POS registration. Printed on each receipt.</p>
+              </div>
+              <div className="space-y-1">
+                <Label>FBR API Bearer Token</Label>
+                <Input
+                  value={form.fbrToken ?? ""}
+                  onChange={f("fbrToken")}
+                  placeholder="Bearer token from FIRES/PRAL portal"
+                  data-testid="input-fbr-token"
+                />
+                <p className="text-xs text-muted-foreground">Access token for real-time invoice push to FBR FIRES sandbox API.</p>
+              </div>
             </div>
           )}
         </CardContent>

@@ -3,6 +3,7 @@ import { eq, desc, gte, lte, and, asc, gt, like, sql } from "drizzle-orm";
 import { db } from "../lib/db.js";
 import { requireAuth } from "../middlewares/auth.js";
 import { logActivity } from "../lib/activity-log.js";
+import { logger } from "../lib/logger.js";
 import {
   salesTable,
   saleItemsTable,
@@ -11,6 +12,7 @@ import {
   customersTable,
   customerLedgerTable,
   prescriptionsTable,
+  settingsTable,
 } from "@workspace/db";
 
 const router = Router();
@@ -445,12 +447,86 @@ router.post("/sales", requireAuth, async (req, res) => {
     `Sale ${result.invoiceNo} created, total: ${result.totalAmount}`
   );
 
+  // FBR Real-Time Push (non-fatal — log errors but do not fail the sale)
+  let fbrInvoiceNo: string | null = null;
+  try {
+    const [settingsRow] = await db
+      .select({ fbrEnabled: settingsTable.fbrEnabled, fbrPosId: settingsTable.fbrPosId, fbrToken: settingsTable.fbrToken })
+      .from(settingsTable)
+      .orderBy(asc(settingsTable.id))
+      .limit(1);
+    if (settingsRow?.fbrEnabled && settingsRow.fbrPosId && settingsRow.fbrToken) {
+      const fbrBody = {
+        InvoiceNumber: result.invoiceNo,
+        POSID: Number(settingsRow.fbrPosId) || 0,
+        USIN: result.invoiceNo,
+        DateTime: new Date().toISOString().replace("T", " ").slice(0, 19),
+        BuyerNTN: null,
+        BuyerCNIC: null,
+        BuyerName: null,
+        BuyerPhoneNumber: null,
+        TotalBillAmount: totalAmount,
+        TotalQuantity: allocations.reduce((s, a) => s + a.requestedQty, 0),
+        TotalSaleValue: totalAmount,
+        TotalTaxCharged: 0,
+        Discount: Number(disc),
+        FurtherTax: 0,
+        PaymentMode: paymentMode === "cash" ? 1 : 2,
+        RefUSIN: null,
+        InvoiceType: 1,
+        Items: allocations.map((a, idx) => ({
+          ItemCode: String(a.medicineId),
+          ItemName: a.medicineName,
+          Quantity: a.requestedQty,
+          PCTCode: "99999999",
+          TaxRate: 0,
+          SaleValue: a.lineTotal,
+          TotalAmount: a.lineTotal,
+          TaxCharged: 0,
+          Discount: (a.discountPercent / 100) * a.requestedQty * a.salePrice,
+          FurtherTax: 0,
+          InvoiceType: 1,
+          RefUSIN: null,
+          SerialNo: idx + 1,
+        })),
+      };
+      const fbrResp = await fetch(
+        "https://esp.fbr.gov.pk:8446/api/test/GetInvoiceNumber",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${settingsRow.fbrToken}`,
+          },
+          body: JSON.stringify(fbrBody),
+          signal: AbortSignal.timeout(8000),
+        }
+      );
+      if (fbrResp.ok) {
+        const fbrData = (await fbrResp.json()) as { InvFBRNo?: string };
+        fbrInvoiceNo = fbrData.InvFBRNo ?? null;
+        if (fbrInvoiceNo) {
+          await db
+            .update(salesTable)
+            .set({ fbrInvoiceNo })
+            .where(eq(salesTable.id, result.id));
+          logger.info({ invoiceNo: result.invoiceNo, fbrInvoiceNo }, "FBR push success");
+        }
+      } else {
+        const errText = await fbrResp.text();
+        logger.warn({ status: fbrResp.status, body: errText }, "FBR push rejected");
+      }
+    }
+  } catch (fbrErr) {
+    logger.warn({ fbrErr }, "FBR push failed (non-fatal)");
+  }
+
   const responseItems = allocations.map((a) => ({
     ...a,
     quantity: a.requestedQty,
     totalAmount: a.lineTotal,
   }));
-  res.status(201).json({ ...result, items: responseItems });
+  res.status(201).json({ ...result, fbrInvoiceNo, items: responseItems });
 });
 
 router.get("/sales/:id", requireAuth, async (req, res) => {

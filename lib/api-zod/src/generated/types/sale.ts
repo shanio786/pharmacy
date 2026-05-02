@@ -22,5 +22,7 @@ export interface Sale {
   paymentMode: string;
   /** @nullable */
   notes?: string | null;
+  /** @nullable */
+  fbrInvoiceNo?: string | null;
   createdAt: string;
 }

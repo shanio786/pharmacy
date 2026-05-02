@@ -865,6 +865,7 @@ export const ListSalesResponseItem = zod.object({
   changeAmount: zod.number(),
   paymentMode: zod.string(),
   notes: zod.string().nullish(),
+  fbrInvoiceNo: zod.string().nullish(),
   createdAt: zod.string(),
 });
 export const ListSalesResponse = zod.array(ListSalesResponseItem);
@@ -919,6 +920,7 @@ export const GetSaleResponse = zod
     changeAmount: zod.number(),
     paymentMode: zod.string(),
     notes: zod.string().nullish(),
+    fbrInvoiceNo: zod.string().nullish(),
     createdAt: zod.string(),
   })
   .and(
@@ -1170,6 +1172,7 @@ export const GetSettingsResponse = zod.object({
   drugLicense: zod.string().nullish(),
   fbrEnabled: zod.boolean(),
   fbrPosId: zod.string().nullish(),
+  fbrToken: zod.string().nullish(),
   taxPercent: zod.number(),
   receiptFooter: zod.string().nullish(),
   defaultSaleUnit: zod.string(),
@@ -1189,6 +1192,7 @@ export const UpdateSettingsBody = zod.object({
   drugLicense: zod.string().nullish(),
   fbrEnabled: zod.boolean().optional(),
   fbrPosId: zod.string().nullish(),
+  fbrToken: zod.string().nullish(),
   taxPercent: zod.number().optional(),
   receiptFooter: zod.string().nullish(),
   defaultSaleUnit: zod.string().optional(),
@@ -1208,6 +1212,7 @@ export const UpdateSettingsResponse = zod.object({
   drugLicense: zod.string().nullish(),
   fbrEnabled: zod.boolean(),
   fbrPosId: zod.string().nullish(),
+  fbrToken: zod.string().nullish(),
   taxPercent: zod.number(),
   receiptFooter: zod.string().nullish(),
   defaultSaleUnit: zod.string(),
@@ -1309,6 +1314,7 @@ export const GetSalesReportResponse = zod.object({
   saleCount: zod.number(),
   rows: zod.array(
     zod.object({
+      id: zod.number(),
       date: zod.string(),
       invoiceNo: zod.string(),
       customerName: zod.string().nullish(),

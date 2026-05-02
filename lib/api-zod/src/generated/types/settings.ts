@@ -23,6 +23,8 @@ export interface Settings {
   fbrEnabled: boolean;
   /** @nullable */
   fbrPosId?: string | null;
+  /** @nullable */
+  fbrToken?: string | null;
   taxPercent: number;
   /** @nullable */
   receiptFooter?: string | null;

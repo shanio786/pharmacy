@@ -41,6 +41,7 @@ router.get("/reports/sales", requireAuth, async (req, res) => {
 
   const rows = await db
     .select({
+      id: salesTable.id,
       date: salesTable.date,
       invoiceNo: salesTable.invoiceNo,
       customerName: customersTable.name,
@@ -65,6 +66,7 @@ router.get("/reports/sales", requireAuth, async (req, res) => {
     netSales,
     saleCount: rows.length,
     rows: rows.map((r) => ({
+      id: r.id,
       date: r.date,
       invoiceNo: r.invoiceNo,
       customerName: r.customerName ?? null,

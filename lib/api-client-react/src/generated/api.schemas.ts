@@ -457,6 +457,8 @@ export interface Sale {
   paymentMode: string;
   /** @nullable */
   notes?: string | null;
+  /** @nullable */
+  fbrInvoiceNo?: string | null;
   createdAt: string;
 }
 
@@ -694,6 +696,8 @@ export interface Settings {
   fbrEnabled: boolean;
   /** @nullable */
   fbrPosId?: string | null;
+  /** @nullable */
+  fbrToken?: string | null;
   taxPercent: number;
   /** @nullable */
   receiptFooter?: string | null;
@@ -721,6 +725,8 @@ export interface UpdateSettingsBody {
   fbrEnabled?: boolean;
   /** @nullable */
   fbrPosId?: string | null;
+  /** @nullable */
+  fbrToken?: string | null;
   taxPercent?: number;
   /** @nullable */
   receiptFooter?: string | null;
@@ -763,6 +769,7 @@ export interface ExpiringBatch {
 }
 
 export interface SalesReportRow {
+  id: number;
   date: string;
   invoiceNo: string;
   /** @nullable */

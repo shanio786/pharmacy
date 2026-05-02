@@ -7,6 +7,7 @@
  */
 
 export interface SalesReportRow {
+  id: number;
   date: string;
   invoiceNo: string;
   /** @nullable */

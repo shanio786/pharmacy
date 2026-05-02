@@ -2475,6 +2475,8 @@ components:
           type: string
         notes:
           type: ["string", "null"]
+        fbrInvoiceNo:
+          type: ["string", "null"]
         createdAt:
           type: string
       required: [id, invoiceNo, date, subtotal, discountAmount, totalAmount, paidAmount, changeAmount, paymentMode, createdAt]
@@ -2844,6 +2846,8 @@ components:
           type: boolean
         fbrPosId:
           type: ["string", "null"]
+        fbrToken:
+          type: ["string", "null"]
         taxPercent:
           type: number
         receiptFooter:
@@ -2880,6 +2884,8 @@ components:
         fbrEnabled:
           type: boolean
         fbrPosId:
+          type: ["string", "null"]
+        fbrToken:
           type: ["string", "null"]
         taxPercent:
           type: number
@@ -2977,6 +2983,8 @@ components:
     SalesReportRow:
       type: object
       properties:
+        id:
+          type: integer
         date:
           type: string
         invoiceNo:
@@ -2989,7 +2997,7 @@ components:
           type: number
         paymentMode:
           type: string
-      required: [date, invoiceNo, totalAmount, discountAmount, paymentMode]
+      required: [id, date, invoiceNo, totalAmount, discountAmount, paymentMode]
 
     StockReportItem:
       type: object

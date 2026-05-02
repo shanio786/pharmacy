@@ -405,6 +405,7 @@ export const salesTable = pgTable("sales", {
   prescribedBy: text("prescribed_by"),
   patientName: text("patient_name"),
   createdBy: integer("created_by").references(() => usersTable.id),
+  fbrInvoiceNo: text("fbr_invoice_no"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
@@ -682,6 +683,7 @@ export const settingsTable = pgTable("settings", {
   lowStockDays: integer("low_stock_days").notNull().default(30),
   fbrEnabled: boolean("fbr_enabled").notNull().default(false),
   fbrPosId: text("fbr_pos_id"),
+  fbrToken: text("fbr_token"),
   strn: text("strn"),
   currency: text("currency").notNull().default("PKR"),
   expiryAlertDays: integer("expiry_alert_days").notNull().default(90),

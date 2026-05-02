@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useListMedicines, useListCustomers, useCreateSale, useGetMedicineBatches, useGetSettings } from "@workspace/api-client-react";
 import type { MedicineWithStock, Batch, Customer, CreateSaleBody, CreateSaleItemBody, SaleWithItems, SaleItem, Settings } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -53,7 +53,9 @@ function MedicineBatchSelector({
   const availableBatches = batches.filter((b) => b.quantityUnits > 0);
   const selectedBatch = availableBatches.find((b) => String(b.id) === batchId) ?? availableBatches[0];
 
-  const effectivePrice = saleUnit === "pack" ? medicine.salePrice * medicine.conversionFactor : medicine.salePrice;
+  const effectivePrice = saleUnit === "pack"
+    ? Number(medicine.salePrice) * Number(medicine.conversionFactor)
+    : Number(medicine.salePrice);
 
   const buildCartItem = (batch: Batch | undefined): CartItem => ({
     medicineId: medicine.id,
@@ -62,10 +64,10 @@ function MedicineBatchSelector({
     batchNo: batch?.batchNo ?? "",
     expiryDate: batch?.expiryDate ?? "",
     saleUnit,
-    quantity: qty,
-    salePrice: effectivePrice,
-    discountPercent: disc,
-    conversionFactor: medicine.conversionFactor,
+    quantity: Math.max(1, Number(qty) || 1),
+    salePrice: Number(effectivePrice) || 0,
+    discountPercent: Math.min(100, Math.max(0, Number(disc) || 0)),
+    conversionFactor: Number(medicine.conversionFactor) || 1,
     availableQty: batch?.quantityUnits ?? 0,
     isControlled: medicine.isControlled,
   });
@@ -104,7 +106,7 @@ function MedicineBatchSelector({
         type="number"
         min={1}
         value={qty}
-        onChange={(e) => setQty(Number(e.target.value))}
+        onChange={(e) => setQty(Math.max(1, Number(e.target.value) || 1))}
         className="h-7 text-xs w-16"
       />
       <Input
@@ -112,7 +114,7 @@ function MedicineBatchSelector({
         min={0}
         max={100}
         value={disc}
-        onChange={(e) => setDisc(Number(e.target.value))}
+        onChange={(e) => setDisc(Math.min(100, Math.max(0, Number(e.target.value) || 0)))}
         className="h-7 text-xs w-16"
         placeholder="Disc%"
       />
@@ -235,6 +237,11 @@ export default function POSPage() {
   const customers = customerData as Customer[];
   const settings = settingsData as Settings | undefined;
 
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    searchInputRef.current?.focus();
+  }, []);
+
   const subtotal = cart.reduce((acc, item) => {
     const lineTotal = item.salePrice * item.quantity;
     const lineDisc = lineTotal * (item.discountPercent / 100);
@@ -281,8 +288,8 @@ export default function POSPage() {
     const body: CreateSaleBody = {
       customerId: customerId !== "walk-in" ? Number(customerId) : null,
       date: format(new Date(), "yyyy-MM-dd"),
-      discountAmount: discAmount,
-      paidAmount,
+      discountAmount: Number(discAmount) || 0,
+      paidAmount: Number(paidAmount) || 0,
       paymentMode,
       notes: notes || null,
       patientName: prescriptionInfo?.patientName || null,
@@ -298,9 +305,9 @@ export default function POSPage() {
         medicineId: item.medicineId,
         batchId: item.batchId,
         saleUnit: item.saleUnit,
-        quantity: item.quantity,
-        salePrice: item.salePrice,
-        discountPercent: item.discountPercent,
+        quantity: Math.max(1, Number(item.quantity) || 1),
+        salePrice: Number(item.salePrice) || 0,
+        discountPercent: Math.min(100, Math.max(0, Number(item.discountPercent) || 0)),
       })),
     };
     try {
@@ -349,10 +356,11 @@ export default function POSPage() {
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
+            ref={searchInputRef}
             data-testid="input-medicine-search"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search medicine by name, generic, company..."
+            placeholder="Search medicine by name, generic, barcode..."
             className="pl-9"
           />
         </div>
@@ -475,7 +483,7 @@ export default function POSPage() {
                             type="number"
                             min={1}
                             value={item.quantity}
-                            onChange={(e) => updateCartItem(idx, "quantity", Number(e.target.value))}
+                            onChange={(e) => updateCartItem(idx, "quantity", Math.max(1, Number(e.target.value) || 1))}
                             className="h-6 text-xs w-14 text-center"
                           />
                         </td>
@@ -486,7 +494,7 @@ export default function POSPage() {
                             min={0}
                             max={100}
                             value={item.discountPercent}
-                            onChange={(e) => updateCartItem(idx, "discountPercent", Number(e.target.value))}
+                            onChange={(e) => updateCartItem(idx, "discountPercent", Math.min(100, Math.max(0, Number(e.target.value) || 0)))}
                             className="h-6 text-xs w-14 text-center"
                           />
                         </td>
