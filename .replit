@@ -49,6 +49,7 @@ externalPort = 3000
 [userenv]
 
 [userenv.shared]
+JWT_SECRET = "pharmacare_jwt_secret_pk_2026_stable"
 
 [nix]
 channel = "stable-25_05"

@@ -215,8 +215,20 @@ export function Layout({ children }: { children: ReactNode }) {
           })}
         </nav>
 
-        {/* Collapse button */}
-        <div className="p-3 border-t border-sidebar-border flex-shrink-0">
+        {/* Logout + Collapse */}
+        <div className="p-3 border-t border-sidebar-border flex-shrink-0 space-y-1">
+          <button
+            onClick={logout}
+            className={cn(
+              "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors text-red-300 hover:bg-red-500/20 hover:text-red-200",
+              collapsed && "justify-center px-2"
+            )}
+            data-testid="button-logout-sidebar"
+            title="Logout"
+          >
+            <LogOut className="w-4 h-4 flex-shrink-0" />
+            {!collapsed && <span>Logout</span>}
+          </button>
           <button
             onClick={() => setCollapsed(!collapsed)}
             className="w-full flex items-center justify-center p-2 rounded-lg hover:bg-white/10 transition-colors text-sidebar-foreground/70"
